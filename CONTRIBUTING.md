@@ -8,10 +8,10 @@ Thank you for your interest in contributing to the SPAN API documentation!
 
 Use [Issues](https://github.com/spanio/SPAN-API-Client-Docs/issues) to report:
 
-- Bugs in the SPAN API itself (unexpected behavior, errors, crashes)
-- Errors or omissions in the documentation
+- Documentation errors, omissions, or unclear explanations
+- Bugs or unexpected behavior in example scripts
 
-Issues are not the place for questions, feature requests, or general discussion.
+**Note:** For bugs in SPAN API itself (the panel firmware), contact SPAN support through official channels.
 
 ### Discussions
 
@@ -26,25 +26,19 @@ Discussions are more free-form and open—a good place to connect with the devel
 
 ### Pull Requests
 
-We welcome pull requests for:
+**This repository does not accept pull requests.**
 
-- Documentation corrections or clarifications
-- Improvements to example scripts
-- Additional usage examples
+All documentation and code in this repository is curated from SPAN's internal development process. Community contributions are welcomed through Issues and Discussions:
 
-**Note:** Pull requests are for contributions to this repository (documentation and scripts)—not for SPAN API feature requests or changes. For feature requests, please use [Discussions](https://github.com/spanio/SPAN-API-Client-Docs/discussions).
+1. Submit your suggestion via an Issue or Discussion
+2. If accepted, the change will be implemented internally
+3. The update will be published in a future release
 
-### Before Submitting a PR
-
-1. Fork the repository
-2. Create a feature branch from `main`
-3. Make your changes
-4. Test any code examples to ensure they work
-5. Submit a pull request with a clear description of your changes
+This approach ensures all content is reviewed, tested, and consistent with SPAN's documentation standards.
 
 ## Code of Conduct
 
-Please be respectful and constructive in all interactions. We're here to help developers integrate with SPAN panels successfully.
+Please be respectful and constructive in all interactions. We're here to help developers integrate with SPAN Panel successfully.
 
 ## Important Notice
 
