@@ -1,0 +1,115 @@
+#!/bin/bash
+#
+# span-curl - Wrapper around curl that automatically adds SPAN API authentication
+#
+# Usage:
+#   span-curl /api/v2/auth/clients
+#   span-curl -u ab-1234-c5d67 /api/v2/dns/fqdn
+#   span-curl -X DELETE /api/v2/auth/clients/myapp
+#   span-curl -X POST -d '{"ebusTlsFqdn":"panel.home"}' /api/v2/dns/fqdn
+#
+
+set -euo pipefail
+
+# Get the directory where this script is located (resolve symlinks)
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || python3 -c "import os; print(os.path.realpath('${BASH_SOURCE[0]}'))")"
+SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+LIB_DIR="$(dirname "$SCRIPT_DIR")/lib"
+
+# Source the shared utilities
+source "$LIB_DIR/span-auth-utils.sh"
+
+usage() {
+    echo "Usage: span-curl [OPTIONS] PATH"
+    echo
+    echo "Wrapper around curl that adds SPAN API authentication."
+    echo
+    echo "Options:"
+    echo "  -u SERIAL       Panel serial number (uses default if not specified)"
+    echo "  --http          Use HTTP instead of HTTPS"
+    echo "  --no-auth       Don't add authentication header"
+    echo "  -h, --help      Show this help"
+    echo
+    echo "All other options are passed through to curl."
+    echo
+    echo "Examples:"
+    echo "  span-curl /api/v2/auth/clients"
+    echo "  span-curl -u ab-1234-c5d67 /api/v2/dns/fqdn"
+    echo "  span-curl -X DELETE /api/v2/auth/clients/myapp"
+    echo "  span-curl -X POST -d '{\"key\":\"value\"}' /api/v2/endpoint"
+    echo "  span-curl -v /api/v2/auth/clients    # verbose"
+    exit 1
+}
+
+# Parse arguments
+serial_number=""
+use_https=true
+add_auth=true
+curl_args=("-s")  # Silent mode by default
+api_path=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -u)
+            serial_number="$2"
+            shift 2
+            ;;
+        --http)
+            use_https=false
+            shift
+            ;;
+        --no-auth)
+            add_auth=false
+            shift
+            ;;
+        -h|--help)
+            usage
+            ;;
+        /api/*)
+            # This is the API path
+            api_path="$1"
+            shift
+            ;;
+        *)
+            # Pass through to curl
+            curl_args+=("$1")
+            shift
+            ;;
+    esac
+done
+
+if [[ -z "$api_path" ]]; then
+    echo "Error: No API path specified. Path should start with /api/" >&2
+    echo "Example: span-curl /api/v2/auth/clients" >&2
+    exit 1
+fi
+
+# Resolve panel serial number
+serial_number=$(resolve_panel_serial "$serial_number") || exit 1
+
+# Get panel credentials
+hostname=$(get_panel_hostname "$serial_number")
+if [[ -z "$hostname" ]]; then
+    echo "Error: Could not find hostname for panel '$serial_number'" >&2
+    exit 1
+fi
+
+access_token=$(get_panel_access_token "$serial_number")
+
+# Build URL
+if [[ "$use_https" == true ]]; then
+    # Ensure CA cert exists
+    ca_cert=$(ensure_ca_cert "$serial_number" "$hostname") || exit 1
+    url="https://${hostname}${api_path}"
+    curl_args+=("--cacert" "$ca_cert")
+else
+    url="http://${hostname}${api_path}"
+fi
+
+# Add auth header if needed
+if [[ "$add_auth" == true && -n "$access_token" ]]; then
+    curl_args+=("-H" "Authorization: Bearer ${access_token}")
+fi
+
+# Execute curl
+exec curl "${curl_args[@]}" "$url"

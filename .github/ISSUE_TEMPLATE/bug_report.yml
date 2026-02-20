@@ -1,0 +1,42 @@
+name: Documentation Bug
+description: Report an error or inaccuracy in the documentation
+title: "[Docs]: "
+labels: ["documentation", "bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve the SPAN API documentation!
+
+  - type: input
+    id: page
+    attributes:
+      label: Documentation Page
+      description: Which page or section contains the error?
+      placeholder: "e.g., README.md, HOP/circuits.md"
+    validations:
+      required: true
+
+  - type: textarea
+    id: current
+    attributes:
+      label: Current Documentation
+      description: What does the documentation currently say?
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected/Correct Information
+      description: What should it say instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any other context about the issue (e.g., how you discovered it, firmware version)
+    validations:
+      required: false

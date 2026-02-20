@@ -1,0 +1,158 @@
+#!/bin/bash
+#
+# span-mqtt-sub / span-mqtt-pub - MQTT client wrapper for SPAN panels
+#
+# Can use credentials from ~/.span-auth.json or explicit arguments.
+#
+
+set -euo pipefail
+
+script_name="$(basename "$0")"
+
+# Get the directory where this script is located (resolve symlinks)
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || python3 -c "import os; print(os.path.realpath('${BASH_SOURCE[0]}'))")"
+SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+LIB_DIR="$(dirname "$SCRIPT_DIR")/lib"
+
+# Source shared utilities if available
+if [[ -f "$LIB_DIR/span-auth-utils.sh" ]]; then
+    source "$LIB_DIR/span-auth-utils.sh"
+    HAS_AUTH_UTILS=true
+else
+    HAS_AUTH_UTILS=false
+fi
+
+case "$script_name" in
+    span-mqtt-sub*)
+        mqtt_cmd="mosquitto_sub"
+        ;;
+    span-mqtt-pub*)
+        mqtt_cmd="mosquitto_pub"
+        ;;
+    *)
+        echo "Error: Script must be named span-mqtt-sub or span-mqtt-pub" >&2
+        exit 1
+        ;;
+esac
+
+usage() {
+    echo "Usage: $script_name [-u <serial-number>] [-P <password>] [--cafile <cert-file>] [${mqtt_cmd} args...]"
+    echo
+    echo "Options:"
+    echo "  -u <serial-number>    Panel serial number (uses default from ~/.span-auth.json if not specified)"
+    echo "  -P <password>         MQTT password (uses credential file if not specified)"
+    echo "  --cafile <cert-file>  Path to CA certificate (auto-downloaded if not specified)"
+    echo
+    echo "If credentials are configured via 'span-auth setup', only -u is needed (or nothing for default panel)."
+    echo
+    echo "Topic macro:"
+    echo "  @s expands to ebus/5/<serial-number>"
+    echo
+    echo "Examples:"
+    echo "  # Using credential file (after running 'span-auth setup')"
+    echo "  $script_name -t '@s/\$state' -v"
+    echo "  $script_name -u ab-1234-c5d67 -t '@s/core/#' -v"
+    echo
+    echo "  # Explicit credentials (backward compatible)"
+    echo "  $script_name -u ABC123 -P mypass --cafile /tmp/span.crt -t '@s/\$state' -v"
+    exit 1
+}
+
+serial_number=""
+password=""
+cert_file=""
+passthrough_args=()
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -u)
+            serial_number="$2"
+            shift 2
+            ;;
+        -P)
+            password="$2"
+            shift 2
+            ;;
+        --cafile)
+            cert_file="$2"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            ;;
+        *)
+            passthrough_args+=("$1")
+            shift
+            ;;
+    esac
+done
+
+# If all credentials provided explicitly, use them (backward compatible mode)
+if [[ -n "$serial_number" && -n "$password" && -n "$cert_file" ]]; then
+    hostname="span-${serial_number}.local"
+
+    # Download cert if not exists
+    if [[ ! -f "$cert_file" ]]; then
+        echo "Certificate file not found, downloading from ${hostname}..." >&2
+        curl -sf "http://${hostname}/api/v2/certificate/ca" -o "$cert_file"
+        echo "Certificate saved to ${cert_file}" >&2
+    fi
+else
+    # Use credential file
+    if [[ "$HAS_AUTH_UTILS" != true ]]; then
+        echo "Error: Credential utilities not found. Provide -u, -P, and --cafile explicitly." >&2
+        exit 1
+    fi
+
+    # Resolve serial number from credential file
+    if [[ -z "$serial_number" ]]; then
+        serial_number=$(get_default_panel) || true
+        if [[ -z "$serial_number" ]]; then
+            echo "Error: No panel specified and no default panel configured." >&2
+            echo "Run 'span-auth setup' to configure credentials or specify -u SERIAL." >&2
+            exit 1
+        fi
+    fi
+
+    # Get hostname from credential file
+    hostname=$(get_panel_hostname "$serial_number")
+    if [[ -z "$hostname" ]]; then
+        # Fall back to constructing hostname
+        hostname="span-${serial_number}.local"
+    fi
+
+    # Get password from credential file if not provided
+    if [[ -z "$password" ]]; then
+        password=$(get_panel_password "$serial_number")
+        if [[ -z "$password" ]]; then
+            echo "Error: No password found for panel '$serial_number'." >&2
+            echo "Run 'span-auth setup $serial_number' to configure credentials." >&2
+            exit 1
+        fi
+    fi
+
+    # Get or download CA cert if not provided
+    if [[ -z "$cert_file" ]]; then
+        cert_file=$(ensure_ca_cert "$serial_number" "$hostname") || exit 1
+    elif [[ ! -f "$cert_file" ]]; then
+        echo "Certificate file not found, downloading from ${hostname}..." >&2
+        curl -sf "http://${hostname}/api/v2/certificate/ca" -o "$cert_file"
+        echo "Certificate saved to ${cert_file}" >&2
+    fi
+fi
+
+topic_prefix="ebus/5/${serial_number}"
+
+# Expand @s macro in passthrough args
+expanded_args=()
+for arg in "${passthrough_args[@]+"${passthrough_args[@]}"}"; do
+    expanded_args+=("${arg//@s/$topic_prefix}")
+done
+
+exec "$mqtt_cmd" \
+    -h "$hostname" \
+    -p 8883 \
+    --cafile "$cert_file" \
+    -u "$serial_number" \
+    -P "$password" \
+    "${expanded_args[@]+"${expanded_args[@]}"}"
