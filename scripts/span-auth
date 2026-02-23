@@ -1,0 +1,442 @@
+#!/usr/bin/env python3
+"""Manage credentials for SPAN panels."""
+
+import argparse
+import getpass
+import json
+import sys
+from datetime import datetime
+from pathlib import Path
+
+import requests
+
+# Add lib directory to path for imports (resolve symlinks)
+script_dir = Path(__file__).resolve().parent
+lib_dir = script_dir.parent / "lib"
+sys.path.insert(0, str(lib_dir))
+
+from span_auth_utils import (
+    get_auth_file_path,
+    load_auth_file,
+    save_auth_file,
+    add_panel_credentials,
+    remove_panel_credentials,
+    list_panels,
+    get_default_panel,
+    set_default_panel,
+    get_panel_credentials,
+)
+
+
+def discover_panels(timeout: float = 3.0) -> list[dict]:
+    """Discover SPAN panels on the network using span-discover script."""
+    import subprocess
+
+    # Call span-discover script
+    discover_script = script_dir / "span-discover"
+    if not discover_script.exists():
+        print(f"Error: span-discover script not found at {discover_script}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        result = subprocess.run(
+            [str(discover_script), "-j", "-t", str(int(timeout))],
+            capture_output=True,
+            text=True,
+            timeout=timeout + 30  # Allow extra time for script overhead
+        )
+
+        if result.returncode != 0:
+            # No panels found or error
+            return []
+
+        panels = json.loads(result.stdout)
+        return panels
+
+    except subprocess.TimeoutExpired:
+        print("Error: Panel discovery timed out", file=sys.stderr)
+        return []
+    except json.JSONDecodeError as e:
+        print(f"Error: Failed to parse discovery output: {e}", file=sys.stderr)
+        return []
+    except Exception as e:
+        print(f"Error during discovery: {e}", file=sys.stderr)
+        return []
+
+
+def register_with_panel(hostname: str, passphrase: str | None = None) -> dict | None:
+    """
+    Register with a SPAN panel and get credentials.
+
+    Args:
+        hostname: Panel hostname
+        passphrase: Optional hopPassphrase (None to try door bypass)
+
+    Returns:
+        Credentials dict on success, None on failure
+    """
+    url = f"http://{hostname}/api/v2/auth/register"
+
+    payload = {"name": "span-api-cli"}
+    if passphrase:
+        payload["hopPassphrase"] = passphrase
+
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+
+        if response.status_code == 401:
+            # Door bypass not active, need passphrase
+            return None
+        elif response.status_code == 422:
+            print(f"Validation error: {response.text}", file=sys.stderr)
+            return None
+        elif response.status_code >= 400:
+            print(f"Error: HTTP {response.status_code}: {response.text}", file=sys.stderr)
+            return None
+
+        return response.json()
+
+    except requests.exceptions.Timeout:
+        print(f"Error: Connection to {hostname} timed out", file=sys.stderr)
+        return None
+    except requests.exceptions.ConnectionError:
+        print(f"Error: Could not connect to {hostname}", file=sys.stderr)
+        return None
+    except json.JSONDecodeError as e:
+        print(f"Error: Invalid response from {hostname}: {e}", file=sys.stderr)
+        return None
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return None
+
+
+def cmd_setup(args):
+    """Setup credentials for panels."""
+    # Determine which panels to set up
+    if args.serial:
+        panels = [{"serial_number": args.serial, "hostname": f"span-{args.serial}.local"}]
+    else:
+        print("Discovering SPAN panels on the network...", file=sys.stderr)
+        panels = discover_panels(timeout=args.timeout)
+        if not panels:
+            print("No SPAN panels found. Specify a serial number with: span-auth setup SERIAL", file=sys.stderr)
+            sys.exit(1)
+        print(f"Found {len(panels)} panel(s)", file=sys.stderr)
+
+    success_count = 0
+    for panel in panels:
+        serial = panel["serial_number"]
+        hostname = panel["hostname"]
+
+        print(f"\nSetting up {serial} ({hostname})...", file=sys.stderr)
+
+        # Try with provided passphrase first
+        passphrase = args.passphrase
+        result = None
+
+        if passphrase:
+            result = register_with_panel(hostname, passphrase)
+        else:
+            # Try door bypass first
+            print("  Trying door bypass...", file=sys.stderr)
+            result = register_with_panel(hostname, None)
+
+            if result is None:
+                # Door bypass not active, prompt for passphrase
+                print("  Door bypass not active.", file=sys.stderr)
+                try:
+                    passphrase = getpass.getpass(
+                        f"  Enter hopPassphrase for {serial} (or press door switch 3x and retry): "
+                    )
+                    if passphrase:
+                        result = register_with_panel(hostname, passphrase)
+                except KeyboardInterrupt:
+                    print("\n  Skipped.", file=sys.stderr)
+                    continue
+
+        if result:
+            # Save credentials
+            add_panel_credentials(
+                serial_number=result["serialNumber"],
+                hostname=result["hostname"],
+                hop_passphrase=result.get("hopPassphrase", passphrase or ""),
+                ebus_broker_password=result["ebusBrokerPassword"],
+                access_token=result["accessToken"],
+                access_token_issued_at=result["iatMs"],
+                set_as_default=(len(panels) == 1)
+            )
+            print(f"  ✓ Credentials saved for {serial}", file=sys.stderr)
+            success_count += 1
+        else:
+            print(f"  ✗ Failed to register with {serial}", file=sys.stderr)
+
+    if success_count > 0:
+        print(f"\nSuccessfully configured {success_count} panel(s).", file=sys.stderr)
+        print(f"Credentials saved to: {get_auth_file_path()}", file=sys.stderr)
+    else:
+        print("\nNo panels were configured.", file=sys.stderr)
+        sys.exit(1)
+
+
+def regenerate_passphrase(hostname: str, access_token: str) -> dict | None:
+    """
+    Regenerate the hopPassphrase for a panel.
+
+    Args:
+        hostname: Panel hostname
+        access_token: Current access token for authentication
+
+    Returns:
+        New credentials dict on success, None on failure
+    """
+    url = f"http://{hostname}/api/v2/auth/passphrase"
+
+    try:
+        response = requests.put(
+            url,
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=10
+        )
+
+        if response.status_code == 401:
+            print("Error: Access token is invalid or expired. Run 'span-auth refresh' first.", file=sys.stderr)
+            return None
+        elif response.status_code >= 400:
+            print(f"Error: HTTP {response.status_code}: {response.text}", file=sys.stderr)
+            return None
+
+        return response.json()
+
+    except requests.exceptions.Timeout:
+        print(f"Error: Connection to {hostname} timed out", file=sys.stderr)
+        return None
+    except requests.exceptions.ConnectionError:
+        print(f"Error: Could not connect to {hostname}", file=sys.stderr)
+        return None
+    except json.JSONDecodeError as e:
+        print(f"Error: Invalid response from {hostname}: {e}", file=sys.stderr)
+        return None
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return None
+
+
+def cmd_regenerate(args):
+    """Regenerate the hopPassphrase for a panel."""
+    data = load_auth_file()
+
+    if args.serial:
+        serial = args.serial
+    else:
+        serial = get_default_panel()
+        if not serial:
+            print("Error: No default panel. Specify a serial number.", file=sys.stderr)
+            sys.exit(1)
+
+    creds = data.get("panels", {}).get(serial)
+    if not creds:
+        print(f"Error: Panel '{serial}' not found in credential file.", file=sys.stderr)
+        sys.exit(1)
+
+    hostname = creds["hostname"]
+    access_token = creds.get("access_token")
+
+    if not access_token:
+        print(f"Error: No access token for panel '{serial}'. Run 'span-auth refresh' first.", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Regenerating passphrase for {serial}...", file=sys.stderr)
+    print("Warning: This will invalidate the current passphrase!", file=sys.stderr)
+
+    if not args.yes:
+        confirm = input("Continue? [y/N] ")
+        if confirm.lower() != 'y':
+            print("Cancelled.", file=sys.stderr)
+            sys.exit(0)
+
+    result = regenerate_passphrase(hostname, access_token)
+    if result:
+        add_panel_credentials(
+            serial_number=result["serialNumber"],
+            hostname=result["hostname"],
+            hop_passphrase=result.get("hopPassphrase", ""),
+            ebus_broker_password=result["ebusBrokerPassword"],
+            access_token=result["accessToken"],
+            access_token_issued_at=result["iatMs"]
+        )
+        print(f"✓ Passphrase regenerated for {serial}", file=sys.stderr)
+        print(f"  New passphrase: {result.get('hopPassphrase', 'N/A')}", file=sys.stderr)
+        print(f"  Credentials updated in: {get_auth_file_path()}", file=sys.stderr)
+    else:
+        print(f"✗ Failed to regenerate passphrase for {serial}", file=sys.stderr)
+        sys.exit(1)
+
+
+def cmd_refresh(args):
+    """Refresh access token for panels."""
+    data = load_auth_file()
+
+    if args.all:
+        serials = list(data.get("panels", {}).keys())
+    elif args.serial:
+        serials = [args.serial]
+    else:
+        default = get_default_panel()
+        if not default:
+            print("Error: No default panel. Specify a serial or use --all.", file=sys.stderr)
+            sys.exit(1)
+        serials = [default]
+
+    for serial in serials:
+        creds = data.get("panels", {}).get(serial)
+        if not creds:
+            print(f"Error: Panel '{serial}' not found in credential file.", file=sys.stderr)
+            continue
+
+        hostname = creds["hostname"]
+        passphrase = creds.get("hop_passphrase")
+
+        print(f"Refreshing token for {serial}...", file=sys.stderr)
+
+        result = register_with_panel(hostname, passphrase)
+        if result:
+            add_panel_credentials(
+                serial_number=result["serialNumber"],
+                hostname=result["hostname"],
+                hop_passphrase=result.get("hopPassphrase", passphrase or ""),
+                ebus_broker_password=result["ebusBrokerPassword"],
+                access_token=result["accessToken"],
+                access_token_issued_at=result["iatMs"]
+            )
+            print(f"  ✓ Token refreshed for {serial}", file=sys.stderr)
+        else:
+            print(f"  ✗ Failed to refresh token for {serial}", file=sys.stderr)
+
+
+def cmd_list(args):
+    """List configured panels."""
+    panels = list_panels()
+
+    if not panels:
+        print(f"No panels configured. Run 'span-auth setup' to add panels.", file=sys.stderr)
+        print(f"Credential file: {get_auth_file_path()}", file=sys.stderr)
+        sys.exit(1)
+
+    if args.json:
+        print(json.dumps(panels, indent=2))
+        return
+
+    print(f"Configured panels (from {get_auth_file_path()}):\n")
+    for panel in panels:
+        marker = "*" if panel["is_default"] else " "
+        default_label = " (default)" if panel["is_default"] else ""
+
+        print(f"  {marker} {panel['serial_number']}{default_label}")
+        print(f"    Hostname: {panel['hostname']}")
+
+        if panel["access_token_issued_at"]:
+            issued = datetime.fromtimestamp(panel["access_token_issued_at"] / 1000)
+            print(f"    Token issued: {issued.strftime('%Y-%m-%d %H:%M:%S')}")
+        print()
+
+
+def cmd_default(args):
+    """Get or set the default panel."""
+    if args.serial:
+        # Set default
+        if set_default_panel(args.serial):
+            print(f"Default panel set to: {args.serial}")
+        else:
+            sys.exit(1)
+    else:
+        # Get default
+        default = get_default_panel()
+        if default:
+            print(default)
+        else:
+            print("No default panel configured.", file=sys.stderr)
+            sys.exit(1)
+
+
+def cmd_remove(args):
+    """Remove a panel from the credential file."""
+    if remove_panel_credentials(args.serial):
+        print(f"Removed panel: {args.serial}")
+    else:
+        sys.exit(1)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Manage credentials for SPAN panels",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Commands:
+  setup       Register with panels and save credentials
+  refresh     Refresh access tokens
+  regenerate  Regenerate the hopPassphrase (invalidates current one)
+  list        List configured panels
+  default     Get or set the default panel
+  remove      Remove a panel from the credential file
+
+Examples:
+  span-auth setup                    # Discover and setup all panels
+  span-auth setup ab-1234-c5d67      # Setup specific panel
+  span-auth setup -p PASSPHRASE      # Setup with passphrase
+  span-auth refresh                  # Refresh token for default panel
+  span-auth regenerate               # Regenerate passphrase for default panel
+  span-auth regenerate -y            # Skip confirmation prompt
+  span-auth list                     # List all configured panels
+  span-auth default                  # Show default panel
+  span-auth default ab-1234-c5d67    # Set default panel
+  span-auth remove ab-1234-c5d67     # Remove a panel
+        """,
+    )
+
+    subparsers = parser.add_subparsers(dest="command", help="Command to run")
+
+    # setup command
+    setup_parser = subparsers.add_parser("setup", help="Register with panels and save credentials")
+    setup_parser.add_argument("serial", nargs="?", help="Panel serial number (discovers if not provided)")
+    setup_parser.add_argument("-p", "--passphrase", help="hopPassphrase for authentication")
+    setup_parser.add_argument("-t", "--timeout", type=float, default=3.0, help="Discovery timeout (default: 3.0)")
+    setup_parser.set_defaults(func=cmd_setup)
+
+    # refresh command
+    refresh_parser = subparsers.add_parser("refresh", help="Refresh access tokens")
+    refresh_parser.add_argument("serial", nargs="?", help="Panel serial number (uses default if not provided)")
+    refresh_parser.add_argument("--all", action="store_true", help="Refresh all panels")
+    refresh_parser.set_defaults(func=cmd_refresh)
+
+    # regenerate command
+    regenerate_parser = subparsers.add_parser("regenerate", help="Regenerate the hopPassphrase")
+    regenerate_parser.add_argument("serial", nargs="?", help="Panel serial number (uses default if not provided)")
+    regenerate_parser.add_argument("-y", "--yes", action="store_true", help="Skip confirmation prompt")
+    regenerate_parser.set_defaults(func=cmd_regenerate)
+
+    # list command
+    list_parser = subparsers.add_parser("list", help="List configured panels")
+    list_parser.add_argument("-j", "--json", action="store_true", help="Output as JSON")
+    list_parser.set_defaults(func=cmd_list)
+
+    # default command
+    default_parser = subparsers.add_parser("default", help="Get or set the default panel")
+    default_parser.add_argument("serial", nargs="?", help="Serial number to set as default")
+    default_parser.set_defaults(func=cmd_default)
+
+    # remove command
+    remove_parser = subparsers.add_parser("remove", help="Remove a panel from the credential file")
+    remove_parser.add_argument("serial", help="Panel serial number to remove")
+    remove_parser.set_defaults(func=cmd_remove)
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()

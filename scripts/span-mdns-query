@@ -1,0 +1,128 @@
+#!/usr/bin/env python3
+"""Query and pretty-print SPAN panel mDNS service advertisements."""
+
+import argparse
+import json
+import sys
+from zeroconf import Zeroconf, ServiceBrowser, ServiceListener
+import time
+
+
+class SpanServiceListener(ServiceListener):
+    def __init__(self, serial_number: str):
+        self.serial_number = serial_number
+        self.prefix = f"span-{serial_number}"
+        self.found_services = []
+
+    def add_service(self, zc: Zeroconf, service_type: str, name: str) -> None:
+        if name.lower().startswith(self.prefix.lower()):
+            info = zc.get_service_info(service_type, name)
+            if info:
+                self.found_services.append(self._format_service(info, name, service_type))
+
+    def update_service(self, zc: Zeroconf, service_type: str, name: str) -> None:
+        pass
+
+    def remove_service(self, zc: Zeroconf, service_type: str, name: str) -> None:
+        pass
+
+    def _format_service(self, info, name: str, service_type: str) -> dict:
+        addresses = [addr for addr in info.parsed_addresses()]
+        
+        # Decode TXT records
+        txt_records = {}
+        for key, value in info.properties.items():
+            key_str = key.decode() if isinstance(key, bytes) else key
+            if isinstance(value, bytes):
+                try:
+                    value_str = value.decode()
+                except UnicodeDecodeError:
+                    value_str = value.hex()
+            else:
+                value_str = value
+            txt_records[key_str] = value_str
+
+        return {
+            "instance_name": name.replace(f".{service_type}", ""),
+            "service_type": service_type,
+            "hostname": info.server,
+            "port": info.port,
+            "addresses": addresses,
+            "txt_records": txt_records,
+        }
+
+
+def query_service(serial_number: str, service_type: str, timeout: float = 3.0) -> list:
+    """Query for SPAN panel services."""
+    # Ensure service type has proper format
+    if not service_type.startswith("_"):
+        service_type = f"_{service_type}"
+    if not service_type.endswith("."):
+        if "._tcp" not in service_type and "._udp" not in service_type:
+            service_type = f"{service_type}._tcp.local."
+        elif not service_type.endswith(".local."):
+            service_type = f"{service_type}.local."
+
+    zc = Zeroconf()
+    listener = SpanServiceListener(serial_number)
+    
+    try:
+        browser = ServiceBrowser(zc, service_type, listener)
+        time.sleep(timeout)
+    finally:
+        zc.close()
+
+    return listener.found_services
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Query SPAN panel mDNS service advertisements",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s ABC123 _http
+  %(prog)s ABC123 _mqtt._tcp
+  %(prog)s -t 5 ABC123 _span-panel._tcp
+        """,
+    )
+    parser.add_argument("serial_number", help="SPAN panel serial number")
+    parser.add_argument("service_type", help="Service type (e.g., _http, _mqtt._tcp)")
+    parser.add_argument(
+        "-t", "--timeout",
+        type=float,
+        default=3.0,
+        help="Discovery timeout in seconds (default: 3.0)",
+    )
+    parser.add_argument(
+        "-j", "--json",
+        action="store_true",
+        help="Output raw JSON instead of pretty-printed format",
+    )
+
+    args = parser.parse_args()
+
+    services = query_service(args.serial_number, args.service_type, args.timeout)
+
+    if not services:
+        print(f"No services found for span-{args.serial_number}* of type {args.service_type}", file=sys.stderr)
+        sys.exit(1)
+
+    if args.json:
+        print(json.dumps(services, indent=2))
+    else:
+        for svc in services:
+            print(f"Instance:   {svc['instance_name']}")
+            print(f"Type:       {svc['service_type']}")
+            print(f"Hostname:   {svc['hostname']}")
+            print(f"Port:       {svc['port']}")
+            print(f"Addresses:  {', '.join(svc['addresses'])}")
+            if svc['txt_records']:
+                print("TXT Records:")
+                for key, value in svc['txt_records'].items():
+                    print(f"  {key} = {value}")
+            print()
+
+
+if __name__ == "__main__":
+    main()

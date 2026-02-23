@@ -1,0 +1,166 @@
+#!/usr/bin/env python3
+"""Discover SPAN panels on the local network via mDNS."""
+
+import argparse
+import json
+import sys
+import time
+from dataclasses import dataclass, field
+
+from zeroconf import ServiceBrowser, ServiceListener, Zeroconf
+
+
+@dataclass
+class PanelInfo:
+    """Information about a discovered SPAN panel."""
+
+    serial_number: str
+    hostname: str
+    addresses: list[str] = field(default_factory=list)
+    model: str | None = None
+    firmware_version: str | None = None
+    hardware_version: str | None = None
+
+
+class SpanPanelListener(ServiceListener):
+    """Listener for SPAN panel mDNS services."""
+
+    def __init__(self):
+        self.panels: dict[str, PanelInfo] = {}
+
+    def add_service(self, zc: Zeroconf, type_: str, name: str) -> None:
+        """Called when a service is discovered."""
+        serial = self._parse_serial(name)
+        if serial and serial not in self.panels:
+            info = zc.get_service_info(type_, name)
+            panel = PanelInfo(
+                serial_number=serial,
+                hostname=f"span-{serial}.local",
+            )
+            if info:
+                # Get IP addresses
+                panel.addresses = [addr for addr in info.parsed_addresses()]
+                # Parse TXT records for device info
+                if info.properties:
+                    props = {
+                        k.decode() if isinstance(k, bytes) else k: v.decode() if isinstance(v, bytes) else v
+                        for k, v in info.properties.items()
+                    }
+                    panel.model = props.get("model")
+                    panel.firmware_version = props.get("firmware_version")
+                    panel.hardware_version = props.get("hardware_version")
+            self.panels[serial] = panel
+
+    def remove_service(self, zc: Zeroconf, type_: str, name: str) -> None:
+        """Called when a service is removed."""
+        pass
+
+    def update_service(self, zc: Zeroconf, type_: str, name: str) -> None:
+        """Called when a service is updated."""
+        pass
+
+    def _parse_serial(self, instance_name: str) -> str | None:
+        """Parse serial number from mDNS instance name."""
+        # Instance name format: "span-<serial>-EBUS._ebus._tcp.local."
+        # or similar variations
+        name_lower = instance_name.lower()
+        if not name_lower.startswith("span-"):
+            return None
+
+        # Remove service type suffix
+        name = instance_name.split("._")[0]
+
+        # Remove "span-" prefix (case insensitive)
+        if name.lower().startswith("span-"):
+            name = name[5:]
+
+        # Remove known service suffixes
+        suffixes = [
+            "-EBUS", "-HTTP", "-HTTPS", "-MQTTS", "-MQTT",
+            "-WS", "-WSS", "-HTTP-API", "-HTTPS-API"
+        ]
+        for suffix in suffixes:
+            if name.upper().endswith(suffix.upper()):
+                name = name[:-len(suffix)]
+                break
+
+        return name if name else None
+
+
+def discover_panels(timeout: float = 3.0) -> list[PanelInfo]:
+    """
+    Discover SPAN panels on the network via mDNS.
+
+    Args:
+        timeout: Discovery timeout in seconds
+
+    Returns:
+        List of discovered panels
+    """
+    zeroconf = Zeroconf()
+    listener = SpanPanelListener()
+
+    # Browse for SPAN ebus services
+    browser = ServiceBrowser(zeroconf, "_ebus._tcp.local.", listener)
+
+    try:
+        time.sleep(timeout)
+    finally:
+        browser.cancel()
+        zeroconf.close()
+
+    return list(listener.panels.values())
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Discover SPAN panels on the local network via mDNS."
+    )
+    parser.add_argument(
+        "-t", "--timeout",
+        type=float,
+        default=3.0,
+        help="Discovery timeout in seconds (default: 3)"
+    )
+    parser.add_argument(
+        "-j", "--json",
+        action="store_true",
+        help="Output as JSON"
+    )
+    args = parser.parse_args()
+
+    panels = discover_panels(timeout=args.timeout)
+
+    if not panels:
+        print("No SPAN panels found on the network.", file=sys.stderr)
+        sys.exit(1)
+
+    if args.json:
+        output = [
+            {
+                "serial_number": p.serial_number,
+                "hostname": p.hostname,
+                "addresses": p.addresses,
+                "model": p.model,
+                "firmware_version": p.firmware_version,
+                "hardware_version": p.hardware_version,
+            }
+            for p in panels
+        ]
+        print(json.dumps(output, indent=2))
+    else:
+        print(f"Found {len(panels)} SPAN panel(s):\n")
+        for p in panels:
+            print(f"  Serial: {p.serial_number}")
+            print(f"  Hostname: {p.hostname}")
+            if p.addresses:
+                print(f"  Addresses: {', '.join(p.addresses)}")
+            if p.model:
+                print(f"  Model: {p.model}")
+            if p.firmware_version:
+                print(f"  Firmware: {p.firmware_version}")
+            print()
+
+
+if __name__ == "__main__":
+    main()
