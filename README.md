@@ -48,7 +48,7 @@ Examples of SPAN API clients may include:
 
 - Software developed by the homeowner
 - Third-party applications running on, or with access to, the home network
-- SPAN-provided local applications such as SPAN Home On-Premise
+- SPAN-provided local applications such as [SPAN Home On-premise](https://support.span.io/hc/en-us/articles/38584072525207-SPAN-Home-On-Premise)
 
 SPAN API is licensed for personal, non-commercial use only. Use of SPAN API to provide commercial services, fleet management, multi-site data aggregation, or any other commercial purpose is a violation of the [SPAN Terms of Service](https://www.span.io/terms-of-service) and may result in termination of SPAN API access. Organizations and businesses requiring programmatic access to SPAN Panel data should contact SPAN to discuss commercial licensing, including licensing of SPAN Fleet Manager.
 
@@ -146,7 +146,7 @@ The SPAN API eBus MQTT broker offers client access via:
 - Websockets (WS)
 - Secure Websockets (WSS: WS over TLS)
 
-The WS protocol is provided (primarily) to enable browser-based JavaScript applications, e.g. the SPAN Home On-premise application, and the WSS protocol is available for use by SPAN API clients that prefer to use Websockets instead of native MQTT.
+The WS protocol is provided (primarily) to enable browser-based JavaScript applications, e.g. the [SPAN Home On-premise](https://support.span.io/hc/en-us/articles/38584072525207-SPAN-Home-On-Premise) application, and the WSS protocol is available for use by SPAN API clients that prefer to use Websockets instead of native MQTT.
 
 ##### [MQTT Broker Authentication](#mqtt-broker-authentication)
 
@@ -797,7 +797,7 @@ SPAN Panel maintains its server-certificate, renewing it prior to expiration, an
 
 JavaScript applications (especially when browser-based) typically lack the ability to use the MQTT protocol natively, and access MQTT brokers via Websockets, so the SPAN Panel MQTT broker provides both the MQTT and Websocket protocols (as do many other MQTT brokers).
 
-SPAN Home On-premise is a (JavaScript) application provided by SPAN Panel, providing local control and management of SPAN Panel via a web browser, and is itself a SPAN API client.  In order to provide the simplest and easiest user experience for a Homeowner, SPAN Home On-premise and SPAN API provide a non-TLS workflow (via HTTP and WS).  This is a deliberate and conscious tradeoff to provide the Homeowner the simplest tool for panel management at times when transport security may not be the highest priority (for example, during a power outage).
+[SPAN Home On-premise](https://support.span.io/hc/en-us/articles/38584072525207-SPAN-Home-On-Premise) is a (JavaScript) application provided by SPAN Panel, providing local control and management of SPAN Panel via a web browser, and is itself a SPAN API client.  In order to provide the simplest and easiest user experience for a Homeowner, [SPAN Home On-premise](https://support.span.io/hc/en-us/articles/38584072525207-SPAN-Home-On-Premise) and SPAN API provide a non-TLS workflow (via HTTP and WS).  This is a deliberate and conscious tradeoff to provide the Homeowner the simplest tool for panel management at times when transport security may not be the highest priority (for example, during a power outage).
 
 ### [Security Considerations for Self-Signed Certificates](#security-considerations-for-self-signed-certificates)
 
