@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 SPAN API versions are tied to SPAN Panel firmware releases using the format `rYYYYWW`.
 
+## Release 202615
+
+### Fixed
+
+- Homie/MQTT: Fixed EVSE `lock-state` enum format from `UNKNOWN,LOCKED,UNLOCKED`
+  to `UNLOCKED,LOCKED` — removed invalid `UNKNOWN` value to match actual OCPP-derived states
+  ([#9](https://github.com/spanio/SPAN-API-Client-Docs/issues/9))
+- REST: `POST /api/v2/dns/fqdn` now permitted for authenticated clients — previously
+  returned 403 for all client types
+  ([#10](https://github.com/spanio/SPAN-API-Client-Docs/issues/10))
+
+### Added
+
+- Homie/MQTT: eBus MQTT broker now enforces publish ACLs — consumer clients can only
+  publish to `/set` topics. Publishes to panel state topics (`$state`, `$description`,
+  bare property values) and LWT messages on panel topics are silently rejected.
+  See [MQTT Broker Permissions](docs/public/mqtt-broker-permissions.md)
+  ([#7](https://github.com/spanio/SPAN-API-Client-Docs/issues/7))
+- mDNS: Automatic suppression of `wlan0` mDNS advertisements when `eth0` and `wlan0`
+  share the same subnet, preventing hostname collisions and service discovery failures.
+  See [eth0 and wlan0 on the Same Subnet](docs/public/span-panel-network-architecture.md#eth0-and-wlan0-on-the-same-subnet)
+- Per-release API spec artifacts now published in `specs/` directory: OpenAPI 3.x
+  (`openapi.json`), Homie property schema (`homie-schema.json`), and mDNS service
+  definitions (`mdns-services.json`)
+
 ## Release 202609
 
 ### Fixed

@@ -1,0 +1,108 @@
+{
+  "metadata": [
+    {
+      "enabled": true,
+      "name": "{hostname}",
+      "port": 0,
+      "service_type": "_device-info._tcp",
+      "txt_records": {
+        "eth0_mac": "{eth0_mac}",
+        "eth1_mac": "{eth1_mac}",
+        "firmware_version": "{firmware_version}",
+        "hardware_version": "{hardware_version}",
+        "manufacturer": "SPAN.io",
+        "model": "SPAN32",
+        "serial_number": "{serial_number}",
+        "txtvers": "1",
+        "wlan0_ap_mac": "{wlan0_ap_mac}",
+        "wlan0_mac": "{wlan0_mac}"
+      }
+    },
+    {
+      "enabled": true,
+      "name": "{hostname}-EBUS",
+      "port": 0,
+      "service_type": "_ebus._tcp",
+      "txt_records": {
+        "homie_domain": "ebus",
+        "homie_roles": "device",
+        "homie_version": "5",
+        "mqtt_broker": "{hostname}",
+        "txtvers": "1"
+      }
+    }
+  ],
+  "mqtt": [
+    {
+      "enabled": true,
+      "name": "{hostname}-MQTTS",
+      "port": 8883,
+      "service_type": "_secure-mqtt._tcp",
+      "txt_records": {
+        "protocol": "mqtt",
+        "txtvers": "1",
+        "versions": "3.1,3.1.1,5.0"
+      }
+    },
+    {
+      "enabled": true,
+      "name": "{hostname}-MQTT-WS",
+      "port": 9001,
+      "service_type": "_mqtt-ws._tcp",
+      "txt_records": {
+        "protocol": "mqtt",
+        "subprotocol": "mqtt",
+        "txtvers": "1",
+        "versions": "3.1,3.1.1,5.0"
+      }
+    },
+    {
+      "enabled": true,
+      "name": "{hostname}-MQTT-WSS",
+      "port": 9002,
+      "service_type": "_mqtt-wss._tcp",
+      "txt_records": {
+        "protocol": "mqtt",
+        "subprotocol": "mqtt",
+        "txtvers": "1",
+        "versions": "3.1,3.1.1,5.0"
+      }
+    }
+  ],
+  "rest-api": [
+    {
+      "enabled": true,
+      "name": "{hostname}-HTTP-API",
+      "port": 80,
+      "service_type": "_http._tcp",
+      "txt_records": {
+        "docs": "/api/docs",
+        "path": "/api",
+        "schema": "/api/openapi.json",
+        "txtvers": "1",
+        "v1_deprecated": "true",
+        "v1_path": "/api/v1",
+        "v2_path": "/api/v2",
+        "version_default": "v2",
+        "versions": "v1,v2"
+      }
+    },
+    {
+      "enabled": true,
+      "name": "{hostname}-HTTPS-API",
+      "port": 443,
+      "service_type": "_https._tcp",
+      "txt_records": {
+        "docs": "/api/docs",
+        "path": "/api",
+        "schema": "/api/openapi.json",
+        "txtvers": "1",
+        "v1_deprecated": "true",
+        "v1_path": "/api/v1",
+        "v2_path": "/api/v2",
+        "version_default": "v2",
+        "versions": "v1,v2"
+      }
+    }
+  ]
+}

@@ -8,8 +8,8 @@ Command-line tools for discovering and interacting with SPAN panels on your loca
 # 1. Discover panels on your network
 span-discover
 
-# 2. Set up credentials (press door switch 3x first, or have your passphrase ready)
-span-auth setup
+# 2. Set up credentials (waits for door switch press, then registers)
+span-auth setup --wait
 
 # 3. Subscribe to panel state via MQTT
 span-mqtt-sub -t '@s/$state' -v
@@ -75,9 +75,21 @@ Manage credentials for SPAN panels. Credentials are stored in `~/.span-auth.json
 
 #### Setup credentials
 
-Two authentication methods are supported:
+Three authentication methods are supported:
 
-**Method 1: Door bypass (proof-of-proximity)**
+**Method 1: Door bypass with `--wait` (recommended)**
+
+Start the command first, then go press the door switch — no timing pressure:
+
+```bash
+span-auth setup --wait                    # Discover panel, wait for door press
+span-auth setup --wait ab-1234-c5d67      # Wait for specific panel
+span-auth setup --wait --wait-timeout 60  # Custom timeout (default: 900s = 15 min)
+```
+
+The script polls the panel's status endpoint every few seconds. Once proximity is proven, it automatically proceeds with registration.
+
+**Method 2: Door bypass (manual timing)**
 
 1. Press the panel's door switch 3 times rapidly
 2. Within 15 minutes, run:
@@ -86,12 +98,18 @@ Two authentication methods are supported:
    span-auth setup
    ```
 
-**Method 2: With passphrase**
+**Method 3: With passphrase**
 
 ```bash
 span-auth setup -p YOUR_PASSPHRASE
 span-auth setup ab-1234-c5d67 -p YOUR_PASSPHRASE  # Specific panel
 ```
+
+#### About door bypass (proof-of-proximity)
+
+The panel's door switch is a magnetic reed switch. Opening the panel door counts as the first press, so from a closed door you only need **2 additional presses** to trigger proximity proof. When proximity is proven, the breaker-space LED strip flashes approximately twice to confirm.
+
+The proof-of-proximity window lasts ~15 minutes and is **single-use** — the first API registration consumes it. If registration fails for any reason (e.g., a client name collision), the proof is spent and you must press the door switch again.
 
 #### Other commands
 
@@ -202,8 +220,8 @@ export SPAN_CA_CERT_DIR=/path/to/ca-certs
    # Discover your panel
    span-discover
 
-   # Press door switch 3x, then within 15 minutes:
-   span-auth setup
+   # Start the wait, then go press the door switch 3x:
+   span-auth setup --wait
    ```
 
 2. **Daily use:**

@@ -5,6 +5,7 @@ import argparse
 import getpass
 import json
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -64,6 +65,68 @@ def discover_panels(timeout: float = 3.0) -> list[dict]:
         return []
 
 
+def check_proximity(hostname: str) -> bool | None:
+    """Check if proximity has been proven on a panel.
+
+    Returns:
+        True if proximityProven, False if not yet proven, None on connection error.
+    """
+    url = f"http://{hostname}/api/v2/status"
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            return response.json().get("proximityProven", False)
+        return False
+    except (requests.exceptions.RequestException, json.JSONDecodeError):
+        return None
+
+
+def wait_for_proximity(hostname: str, serial: str, timeout: float = 900.0) -> bool:
+    """Poll panel status waiting for proximity proof.
+
+    Args:
+        hostname: Panel hostname
+        serial: Panel serial number (for display)
+        timeout: Max seconds to wait (default: 900 = 15 minutes)
+
+    Returns:
+        True if proximity was proven, False on timeout or error.
+    """
+    start = time.monotonic()
+    poll_interval = 2.5
+
+    # Check connectivity first
+    result = check_proximity(hostname)
+    if result is None:
+        print(f"Error: Could not connect to {hostname}", file=sys.stderr)
+        return False
+    if result:
+        print(f"  Proximity already proven on {serial}.", file=sys.stderr)
+        return True
+
+    print(f"  Waiting for door press on {serial} ({hostname})...", file=sys.stderr)
+    print(f"  Press the door switch 3 times (timeout: {int(timeout)}s)", file=sys.stderr)
+
+    while True:
+        elapsed = time.monotonic() - start
+        if elapsed >= timeout:
+            print(f"\n  Timed out after {int(elapsed)}s waiting for proximity proof.", file=sys.stderr)
+            return False
+
+        time.sleep(poll_interval)
+        elapsed = time.monotonic() - start
+
+        result = check_proximity(hostname)
+        if result is None:
+            print(f"\r  Connection lost to {hostname}, retrying... ({int(elapsed)}s)    ", end="", file=sys.stderr)
+            continue
+        if result:
+            print(f"\n  ✓ Proximity proven on {serial}!", file=sys.stderr)
+            return True
+
+        print(f"\r  Waiting for door press on {serial}... ({int(elapsed)}s)", end="", file=sys.stderr)
+
+
 def register_with_panel(hostname: str, passphrase: str | None = None) -> dict | None:
     """
     Register with a SPAN panel and get credentials.
@@ -77,7 +140,12 @@ def register_with_panel(hostname: str, passphrase: str | None = None) -> dict | 
     """
     url = f"http://{hostname}/api/v2/auth/register"
 
-    payload = {"name": "span-api-cli"}
+    # Use a timestamped client name to avoid "Name already exists" errors.
+    # The panel's auth/register endpoint rejects duplicate names with HTTP 422,
+    # and the proximity proof (door bypass) is single-use — so a name collision
+    # would waste the proof and force the user to press the door switch again.
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    payload = {"name": f"span-api-cli-{timestamp}"}
     if passphrase:
         payload["hopPassphrase"] = passphrase
 
@@ -129,6 +197,13 @@ def cmd_setup(args):
         hostname = panel["hostname"]
 
         print(f"\nSetting up {serial} ({hostname})...", file=sys.stderr)
+
+        # If --wait, poll for proximity proof before attempting registration
+        if getattr(args, 'wait', False):
+            wait_timeout = getattr(args, 'wait_timeout', 900.0)
+            if not wait_for_proximity(hostname, serial, timeout=wait_timeout):
+                print(f"  ✗ Proximity not proven for {serial}, skipping.", file=sys.stderr)
+                continue
 
         # Try with provided passphrase first
         passphrase = args.passphrase
@@ -383,6 +458,8 @@ Examples:
   span-auth setup                    # Discover and setup all panels
   span-auth setup ab-1234-c5d67      # Setup specific panel
   span-auth setup -p PASSPHRASE      # Setup with passphrase
+  span-auth setup --wait             # Wait for door press, then register
+  span-auth setup -w ab-1234-c5d67   # Wait for door press on specific panel
   span-auth refresh                  # Refresh token for default panel
   span-auth regenerate               # Regenerate passphrase for default panel
   span-auth regenerate -y            # Skip confirmation prompt
@@ -400,6 +477,10 @@ Examples:
     setup_parser.add_argument("serial", nargs="?", help="Panel serial number (discovers if not provided)")
     setup_parser.add_argument("-p", "--passphrase", help="hopPassphrase for authentication")
     setup_parser.add_argument("-t", "--timeout", type=float, default=3.0, help="Discovery timeout (default: 3.0)")
+    setup_parser.add_argument("-w", "--wait", action="store_true",
+                              help="Wait for door switch proximity proof before registering")
+    setup_parser.add_argument("--wait-timeout", type=float, default=900.0,
+                              help="Proximity wait timeout in seconds (default: 900 = 15 min)")
     setup_parser.set_defaults(func=cmd_setup)
 
     # refresh command

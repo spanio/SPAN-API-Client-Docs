@@ -168,6 +168,14 @@ The password is obtained via the response to the [REST API authentication reques
 
 See [Obtaining SPAN API Authentication Credentials](#obtaining-span-api-authentication-credentials) for passphrase acquisition details.
 
+##### [MQTT Broker Permissions](#mqtt-broker-permissions)
+
+The eBus MQTT broker enforces access controls on what authenticated clients can publish. Clients have full read (subscribe) access to all `ebus/#` topics, and can publish to Homie `/set` topics to control the panel. Clients **cannot** publish to the panel's own state topics (`$state`, `$description`, or bare property values).
+
+Clients **may** publish to other device topic trees under `ebus/5/` to support multi-device eBus integrations.
+
+See [MQTT Broker Permissions](docs/public/mqtt-broker-permissions.md) for details.
+
 #### [MQTT Topic and Message Structure](#mqtt-topic-and-message-structure)
 
 SPAN API implements and provides the [Homie “device role”](https://homieiot.github.io/specification/#roles), to represent SPAN Panel on MQTT.
@@ -501,21 +509,24 @@ To recap:
 
 Therefore a SPAN API client must possess the `hopPassphrase` in order to authenticate; two methods of obtaining this credential are provided:
 
-1. Proof-of-proximity: When the SPAN Panel door switch is depressed three times in rapid succession, authentication of the `auth/register` endpoint is disabled for approximately 15 minutes. During this interval, requests to [auth/register](#authentication-endpoint) will bypass the check of the `hopPassphrase` in the request body, and the response received will contain the `hopPassphrase`, `ebusBrokerPassword`, and the `accessToken`.
+1. Proof-of-proximity: When the SPAN Panel door switch is depressed three times in rapid succession, authentication of the `auth/register` endpoint is disabled for approximately 15 minutes. During this interval, requests to [auth/register](#authentication-endpoint) will bypass the check of the `hopPassphrase` in the request body, and the response received will contain the `hopPassphrase`, `ebusBrokerPassword`, and the `accessToken`. Note: opening the panel door counts as the first press (the door switch is a magnetic reed switch), so from a closed door only 2 additional presses are needed. The breaker-space LED strip flashes approximately twice to confirm proximity is proven.
 2. [SPAN Home mobile app](https://www.span.io/app) users can navigate to a page that provides the `hopPassphrase`of SPAN Panel.
 
 The [`span-auth`](https://github.com/spanio/SPAN-API-Client-Docs/blob/main/scripts/span-auth) script manages authentication credentials:
 
 ```shell
-# SPAN Panel door switch is pressed 3 times in rapid succession,
-#   within 15 minutes execute the following command:
+# Start the command, then go press the door switch 3 times:
 
-$ span-auth setup
+$ span-auth setup --wait
 
 Discovering SPAN panels on the network...
 Found 1 panel(s)
 
 Setting up ab-1234-c5d67 (span-ab-1234-c5d67.local)...
+  Waiting for door press on ab-1234-c5d67 (span-ab-1234-c5d67.local)...
+  Press the door switch 3 times (timeout: 900s)
+  Waiting for door press on ab-1234-c5d67... (31s)
+  ✓ Proximity proven on ab-1234-c5d67!
   Trying door bypass...
   ✓ Credentials saved for ab-1234-c5d67
 
@@ -855,7 +866,7 @@ Suggestions and corrections will be reviewed and, if accepted, implemented by SP
 
 ## [Appendix A: SPAN Panel Network Interfaces](#appendix-a-span-panel-network-interfaces)
 
-SPAN Panel provides both client and hosted network interfaces, both hardwired Ethernet and Wi-Fi
+SPAN Panel provides both client and hosted network interfaces, both hardwired Ethernet and Wi-Fi. See [SPAN Panel Network Architecture](docs/public/span-panel-network-architecture.md) for a detailed description of the network topology, NAT behavior, and hosted interface configuration.
 
 ### [SPAN Panel Client Network Interfaces](#span-panel-client-network-interfaces)
 
@@ -884,7 +895,10 @@ The hosted Wi-Fi AP is powered by SPAN Panel directly, consequently might be the
 
 ### [SPAN Panel & SPAN API Networking Recommended Best Practices](#span-panel--span-api-networking-recommended-best-practices)
 
-- The SPAN Panel connection to the home's LAN **SHOULD** be via hardwired Ethernet, using the `eth0` interface.
+- The SPAN Panel connection to the home’s LAN **SHOULD** be via hardwired Ethernet, using the `eth0` interface.
+<<<<<<< HEAD
+- Only **one** client interface (`eth0` or `wlan0`) **SHOULD** be connected to the home LAN at a time. If both must be active, they **MUST** be on different subnets. Having both on the same subnet causes mDNS hostname collisions (see [network architecture documentation](docs/public/span-panel-network-architecture.md) for details). Starting with firmware r202615, the panel automatically mitigates this by suppressing mDNS on `wlan0` when a shared subnet is detected.
+- The home LAN **MUST NOT** use the `10.42.0.0/24` or `10.42.1.0/24` subnet ranges. These are used internally by SPAN Panel’s hosted interfaces (`wlan0_ap` and `eth1` respectively). A client interface assigned an IP in these ranges will conflict with the panel’s hosted networks.
 - The home’s LAN infrastructure (e.g. Ethernet switch) **SHOULD** maintain (backup) power during grid-outages, or other power interruptions.
 - Home energy infrastructure hosts (e.g. BESS, PV systems) **SHOULD** connect to the home LAN via hardwired Ethernet.
 - The home LAN’s DHCP server **SHOULD** be configured with an IP address reservation for SPAN Panel, and for other home energy infrastructure hosts.
