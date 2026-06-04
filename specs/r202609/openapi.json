@@ -1,1606 +1,2178 @@
 {
-    "openapi": "3.0.2",
-    "info": {
-        "title": "Span",
-        "description": "Span Panel REST API",
-        "version": "v1"
-    },
-    "paths": {
-        "/api/v1/auth/register": {
-            "post": {
-                "summary": "Generate Jwt",
-                "operationId": "generate_jwt_api_v1_auth_register_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/AuthIn"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/AuthOut"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/auth/clients": {
-            "get": {
-                "summary": "Get All Clients",
-                "operationId": "get_all_clients_api_v1_auth_clients_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Clients"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/auth/clients/{name}": {
-            "get": {
-                "summary": "Get Client",
-                "operationId": "get_client_api_v1_auth_clients__name__get",
-                "parameters": [
-                    {
-                        "required": true,
-                        "schema": {
-                            "title": "Name",
-                            "type": "string"
-                        },
-                        "name": "name",
-                        "in": "path"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Client"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            },
-            "delete": {
-                "summary": "Delete Client",
-                "operationId": "delete_client_api_v1_auth_clients__name__delete",
-                "parameters": [
-                    {
-                        "required": true,
-                        "schema": {
-                            "title": "Name",
-                            "type": "string"
-                        },
-                        "name": "name",
-                        "in": "path"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Client"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/status": {
-            "get": {
-                "summary": "System Status",
-                "operationId": "system_status_api_v1_status_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/StatusOut"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/wifi/scan": {
-            "get": {
-                "summary": "Get Wifi Scan",
-                "operationId": "get_wifi_scan_api_v1_wifi_scan_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/WifiScanOut"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/wifi/connect": {
-            "post": {
-                "summary": "Run Wifi Connect",
-                "operationId": "run_wifi_connect_api_v1_wifi_connect_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/WifiConnectIn"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/WifiConnectOut"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/panel": {
-            "get": {
-                "summary": "Get Panel State",
-                "operationId": "get_panel_state_api_v1_panel_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/PanelState"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/islanding-state": {
-            "get": {
-                "summary": "Get Islanding State",
-                "operationId": "get_islanding_state_api_v1_islanding_state_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/IslandingState"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/panel/grid": {
-            "get": {
-                "summary": "Get Main Relay State",
-                "operationId": "get_main_relay_state_api_v1_panel_grid_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/RelayStateOut"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            },
-            "post": {
-                "summary": "Set Main Relay State",
-                "operationId": "set_main_relay_state_api_v1_panel_grid_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/RelayStateIn"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/panel/power": {
-            "get": {
-                "summary": "Get Panel Power",
-                "operationId": "get_panel_power_api_v1_panel_power_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/PanelPower"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/panel/meter": {
-            "get": {
-                "summary": "Get Panel Meter",
-                "operationId": "get_panel_meter_api_v1_panel_meter_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/PanelMeter"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/circuits": {
-            "get": {
-                "summary": "Get Circuits",
-                "operationId": "get_circuits_api_v1_circuits_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/CircuitsOut"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/circuits/{circuitId}": {
-            "get": {
-                "summary": "Get Circuit State",
-                "operationId": "get_circuit_state_api_v1_circuits__circuitId__get",
-                "parameters": [
-                    {
-                        "required": true,
-                        "schema": {
-                            "title": "Circuitid",
-                            "type": "string"
-                        },
-                        "name": "circuitId",
-                        "in": "path"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Circuit"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            },
-            "post": {
-                "summary": "Set Circuit State",
-                "operationId": "set_circuit_state_api_v1_circuits__circuitId__post",
-                "parameters": [
-                    {
-                        "required": true,
-                        "schema": {
-                            "title": "Circuitid",
-                            "type": "string"
-                        },
-                        "name": "circuitId",
-                        "in": "path"
-                    }
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/Body_set_circuit_state_api_v1_circuits__circuitId__post"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Circuit"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/spaces/{spaces_id}": {
-            "get": {
-                "summary": "Deprecated Spaces Endpoint Stub",
-                "operationId": "deprecated_spaces_endpoint_stub_api_v1_spaces__spaces_id__get",
-                "parameters": [
-                    {
-                        "required": true,
-                        "schema": {
-                            "title": "Spaces Id",
-                            "type": "string"
-                        },
-                        "name": "spaces_id",
-                        "in": "path"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            },
-            "post": {
-                "summary": "Deprecated Spaces Endpoint Stub",
-                "operationId": "deprecated_spaces_endpoint_stub_api_v1_spaces__spaces_id__post",
-                "parameters": [
-                    {
-                        "required": true,
-                        "schema": {
-                            "title": "Spaces Id",
-                            "type": "string"
-                        },
-                        "name": "spaces_id",
-                        "in": "path"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/spaces": {
-            "get": {
-                "summary": "Deprecated Spaces Endpoint Stub",
-                "operationId": "deprecated_spaces_endpoint_stub_api_v1_spaces_get",
-                "parameters": [
-                    {
-                        "required": false,
-                        "schema": {
-                            "title": "Spaces Id",
-                            "type": "string",
-                            "default": ""
-                        },
-                        "name": "spaces_id",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/panel/emergency-reconnect": {
-            "post": {
-                "summary": "Run Panel Emergency Reconnect",
-                "operationId": "run_panel_emergency_reconnect_api_v1_panel_emergency_reconnect_post",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/storage/soe": {
-            "get": {
-                "summary": "Get Storage Soe",
-                "operationId": "get_storage_soe_api_v1_storage_soe_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/BatteryStorage"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            },
-            "post": {
-                "summary": "Set Storage Soe",
-                "operationId": "set_storage_soe_api_v1_storage_soe_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/BatteryStorage"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/BatteryStorage"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/storage/nice-to-have-thresh": {
-            "get": {
-                "summary": "Get Storage Nice To Have Threshold",
-                "operationId": "get_storage_nice_to_have_threshold_api_v1_storage_nice_to_have_thresh_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/NiceToHaveThreshold"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            },
-            "post": {
-                "summary": "Set Storage Nice To Have Threshold",
-                "operationId": "set_storage_nice_to_have_threshold_api_v1_storage_nice_to_have_thresh_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/NiceToHaveThreshold"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/NiceToHaveThreshold"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        }
-    },
-    "components": {
-        "schemas": {
-            "AllowedEndpointGroups": {
-                "title": "AllowedEndpointGroups",
-                "required": [
-                    "delete",
-                    "get",
-                    "post",
-                    "push"
-                ],
-                "type": "object",
-                "properties": {
-                    "delete": {
-                        "title": "Delete",
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "get": {
-                        "title": "Get",
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "post": {
-                        "title": "Post",
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "push": {
-                        "title": "Push",
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    }
+  "openapi": "3.0.2",
+  "info": {
+    "title": "Span",
+    "description": "Span Panel REST API",
+    "version": "v1+v2"
+  },
+  "paths": {
+    "/api/v2/certificate/ca": {
+      "get": {
+        "tags": [
+          "v2",
+          "Public"
+        ],
+        "summary": "Download CA Certificate",
+        "description": "Public endpoint to download the CA certificate file. No authentication required. Rate limited to 10 requests per minute per IP address.",
+        "operationId": "get_ca_certificate_api_v2_certificate_ca_get",
+        "responses": {
+          "200": {
+            "description": "CA Certificate PEM file",
+            "headers": {
+              "Cache-Control": {
+                "description": "Caching directive",
+                "schema": {
+                  "type": "string",
+                  "example": "public, max-age=3600"
                 }
-            },
-            "AuthIn": {
-                "title": "AuthIn",
-                "required": [
-                    "name"
-                ],
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "title": "Name",
-                        "type": "string"
-                    },
-                    "description": {
-                        "title": "Description",
-                        "type": "string"
-                    },
-                    "otp": {
-                        "title": "Otp",
-                        "type": "string"
-                    },
-                    "dashboardPassword": {
-                        "title": "Dashboardpassword",
-                        "type": "string"
-                    }
+              },
+              "X-Content-Type-Options": {
+                "description": "Security header to prevent MIME sniffing",
+                "schema": {
+                  "type": "string",
+                  "example": "nosniff"
                 }
+              }
             },
-            "AuthOut": {
-                "title": "AuthOut",
-                "required": [
-                    "accessToken",
-                    "tokenType",
-                    "iatMs"
-                ],
-                "type": "object",
-                "properties": {
-                    "accessToken": {
-                        "title": "Accesstoken",
-                        "type": "string"
-                    },
-                    "tokenType": {
-                        "title": "Tokentype",
-                        "type": "string"
-                    },
-                    "iatMs": {
-                        "title": "Iatms",
-                        "type": "integer"
-                    }
-                }
-            },
-            "BatteryStorage": {
-                "title": "BatteryStorage",
-                "required": [
-                    "soe"
-                ],
-                "type": "object",
-                "properties": {
-                    "soe": {
-                        "$ref": "#/components/schemas/StateOfEnergy"
-                    }
-                }
-            },
-            "Body_set_circuit_state_api_v1_circuits__circuitId__post": {
-                "title": "Body_set_circuit_state_api_v1_circuits__circuitId__post",
-                "type": "object",
-                "properties": {
-                    "relayStateIn": {
-                        "$ref": "#/components/schemas/RelayStateIn"
-                    },
-                    "priorityIn": {
-                        "$ref": "#/components/schemas/PriorityIn"
-                    },
-                    "circuitNameIn": {
-                        "$ref": "#/components/schemas/CircuitNameIn"
-                    },
-                    "userControllableIn": {
-                        "$ref": "#/components/schemas/BooleanIn"
-                    },
-                    "sheddableIn": {
-                        "$ref": "#/components/schemas/BooleanIn"
-                    },
-                    "neverBackupIn": {
-                        "$ref": "#/components/schemas/BooleanIn"
-                    }
-                }
-            },
-            "BooleanIn": {
-                "title": "BooleanIn",
-                "required": [
-                    "value"
-                ],
-                "type": "object",
-                "properties": {
-                    "value": {
-                        "title": "Value",
-                        "type": "boolean"
-                    }
-                }
-            },
-            "Branch": {
-                "title": "Branch",
-                "required": [
-                    "id",
-                    "relayState",
-                    "instantPowerW",
-                    "importedActiveEnergyWh",
-                    "exportedActiveEnergyWh"
-                ],
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "title": "Id",
-                        "type": "integer"
-                    },
-                    "relayState": {
-                        "$ref": "#/components/schemas/RelayState"
-                    },
-                    "instantPowerW": {
-                        "title": "Instantpowerw",
-                        "type": "number"
-                    },
-                    "importedActiveEnergyWh": {
-                        "title": "Importedactiveenergywh",
-                        "type": "number"
-                    },
-                    "exportedActiveEnergyWh": {
-                        "title": "Exportedactiveenergywh",
-                        "type": "number"
-                    }
-                }
-            },
-            "Circuit": {
-                "title": "Circuit",
-                "required": [
-                    "id",
-                    "relayState",
-                    "instantPowerW",
-                    "instantPowerUpdateTimeS",
-                    "producedEnergyWh",
-                    "consumedEnergyWh",
-                    "energyAccumUpdateTimeS",
-                    "priority",
-                    "isUserControllable",
-                    "isSheddable",
-                    "isNeverBackup"
-                ],
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "title": "Id",
-                        "type": "string"
-                    },
-                    "name": {
-                        "title": "Name",
-                        "type": "string"
-                    },
-                    "relayState": {
-                        "$ref": "#/components/schemas/RelayState"
-                    },
-                    "instantPowerW": {
-                        "title": "Instantpowerw",
-                        "type": "number"
-                    },
-                    "instantPowerUpdateTimeS": {
-                        "title": "Instantpowerupdatetimes",
-                        "type": "integer"
-                    },
-                    "producedEnergyWh": {
-                        "title": "Producedenergywh",
-                        "type": "number"
-                    },
-                    "consumedEnergyWh": {
-                        "title": "Consumedenergywh",
-                        "type": "number"
-                    },
-                    "energyAccumUpdateTimeS": {
-                        "title": "Energyaccumupdatetimes",
-                        "type": "integer"
-                    },
-                    "tabs": {
-                        "title": "Tabs",
-                        "type": "array",
-                        "items": {
-                            "type": "integer"
-                        }
-                    },
-                    "priority": {
-                        "$ref": "#/components/schemas/Priority"
-                    },
-                    "isUserControllable": {
-                        "title": "Isusercontrollable",
-                        "type": "boolean"
-                    },
-                    "isSheddable": {
-                        "title": "Issheddable",
-                        "type": "boolean"
-                    },
-                    "isNeverBackup": {
-                        "title": "Isneverbackup",
-                        "type": "boolean"
-                    }
-                }
-            },
-            "CircuitNameIn": {
-                "title": "CircuitNameIn",
-                "required": [
-                    "name"
-                ],
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "title": "Name",
-                        "type": "string"
-                    }
-                }
-            },
-            "CircuitsOut": {
-                "title": "CircuitsOut",
-                "required": [
-                    "circuits"
-                ],
-                "type": "object",
-                "properties": {
-                    "circuits": {
-                        "title": "Circuits",
-                        "type": "object",
-                        "additionalProperties": {
-                            "$ref": "#/components/schemas/Circuit"
-                        }
-                    }
-                }
-            },
-            "Client": {
-                "title": "Client",
-                "required": [
-                    "allowed_endpoint_groups"
-                ],
-                "type": "object",
-                "properties": {
-                    "description": {
-                        "title": "Description",
-                        "type": "string"
-                    },
-                    "issued_at": {
-                        "title": "Issued At",
-                        "type": "integer"
-                    },
-                    "allowed_endpoint_groups": {
-                        "$ref": "#/components/schemas/AllowedEndpointGroups"
-                    }
-                }
-            },
-            "Clients": {
-                "title": "Clients",
-                "required": [
-                    "clients"
-                ],
-                "type": "object",
-                "properties": {
-                    "clients": {
-                        "title": "Clients",
-                        "type": "object",
-                        "additionalProperties": {
-                            "$ref": "#/components/schemas/Client"
-                        }
-                    }
-                }
-            },
-            "DoorState": {
-                "title": "DoorState",
-                "enum": [
-                    "UNKNOWN",
-                    "OPEN",
-                    "CLOSED"
-                ],
-                "type": "string",
-                "description": "An enumeration."
-            },
-            "FeedthroughEnergy": {
-                "title": "FeedthroughEnergy",
-                "required": [
-                    "producedEnergyWh",
-                    "consumedEnergyWh"
-                ],
-                "type": "object",
-                "properties": {
-                    "producedEnergyWh": {
-                        "title": "Producedenergywh",
-                        "type": "number"
-                    },
-                    "consumedEnergyWh": {
-                        "title": "Consumedenergywh",
-                        "type": "number"
-                    }
-                }
-            },
-            "HTTPValidationError": {
-                "title": "HTTPValidationError",
-                "type": "object",
-                "properties": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "application/x-pem-file": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "example": "-----BEGIN CERTIFICATE-----\n..."
+              }
+            }
+          },
+          "404": {
+            "description": "Certificate not found or not configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
                     "detail": {
-                        "title": "Detail",
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/ValidationError"
-                        }
+                      "type": "string",
+                      "example": "CA certificate not available"
                     }
+                  }
                 }
-            },
-            "IslandingState": {
-                "title": "IslandingState",
-                "required": [
-                    "islanding_state"
-                ],
-                "type": "object",
-                "properties": {
-                    "islanding_state": {
-                        "title": "Islanding State",
-                        "type": "string"
-                    }
-                }
-            },
-            "MainMeterEnergy": {
-                "title": "MainMeterEnergy",
-                "required": [
-                    "producedEnergyWh",
-                    "consumedEnergyWh"
-                ],
-                "type": "object",
-                "properties": {
-                    "producedEnergyWh": {
-                        "title": "Producedenergywh",
-                        "type": "number"
-                    },
-                    "consumedEnergyWh": {
-                        "title": "Consumedenergywh",
-                        "type": "number"
-                    }
-                }
-            },
-            "NetworkStatus": {
-                "title": "NetworkStatus",
-                "required": [
-                    "eth0Link",
-                    "wlanLink",
-                    "wwanLink"
-                ],
-                "type": "object",
-                "properties": {
-                    "eth0Link": {
-                        "title": "Eth0Link",
-                        "type": "boolean"
-                    },
-                    "wlanLink": {
-                        "title": "Wlanlink",
-                        "type": "boolean"
-                    },
-                    "wwanLink": {
-                        "title": "Wwanlink",
-                        "type": "boolean"
-                    }
-                }
-            },
-            "NiceToHaveThreshold": {
-                "title": "NiceToHaveThreshold",
-                "type": "object",
-                "properties": {
-                    "nice_to_have_threshold_low_soe": {
-                        "$ref": "#/components/schemas/StateOfEnergy"
-                    },
-                    "nice_to_have_threshold_high_soe": {
-                        "$ref": "#/components/schemas/StateOfEnergy"
-                    }
-                }
-            },
-            "PanelMeter": {
-                "title": "PanelMeter",
-                "required": [
-                    "mainMeter",
-                    "feedthrough"
-                ],
-                "type": "object",
-                "properties": {
-                    "mainMeter": {
-                        "$ref": "#/components/schemas/MainMeterEnergy"
-                    },
-                    "feedthrough": {
-                        "$ref": "#/components/schemas/FeedthroughEnergy"
-                    }
-                }
-            },
-            "PanelPower": {
-                "title": "PanelPower",
-                "required": [
-                    "instantGridPowerW",
-                    "feedthroughPowerW"
-                ],
-                "type": "object",
-                "properties": {
-                    "instantGridPowerW": {
-                        "title": "Instantgridpowerw",
-                        "type": "number"
-                    },
-                    "feedthroughPowerW": {
-                        "title": "Feedthroughpowerw",
-                        "type": "number"
-                    }
-                }
-            },
-            "PanelState": {
-                "title": "PanelState",
-                "required": [
-                    "mainRelayState",
-                    "mainMeterEnergy",
-                    "instantGridPowerW",
-                    "feedthroughPowerW",
-                    "feedthroughEnergy",
-                    "gridSampleStartMs",
-                    "gridSampleEndMs",
-                    "dsmGridState",
-                    "dsmState",
-                    "currentRunConfig",
-                    "branches"
-                ],
-                "type": "object",
-                "properties": {
-                    "mainRelayState": {
-                        "$ref": "#/components/schemas/RelayState"
-                    },
-                    "mainMeterEnergy": {
-                        "$ref": "#/components/schemas/MainMeterEnergy"
-                    },
-                    "instantGridPowerW": {
-                        "title": "Instantgridpowerw",
-                        "type": "number"
-                    },
-                    "feedthroughPowerW": {
-                        "title": "Feedthroughpowerw",
-                        "type": "number"
-                    },
-                    "feedthroughEnergy": {
-                        "$ref": "#/components/schemas/FeedthroughEnergy"
-                    },
-                    "gridSampleStartMs": {
-                        "title": "Gridsamplestartms",
-                        "type": "integer"
-                    },
-                    "gridSampleEndMs": {
-                        "title": "Gridsampleendms",
-                        "type": "integer"
-                    },
-                    "dsmGridState": {
-                        "title": "Dsmgridstate",
-                        "type": "string"
-                    },
-                    "dsmState": {
-                        "title": "Dsmstate",
-                        "type": "string"
-                    },
-                    "currentRunConfig": {
-                        "title": "Currentrunconfig",
-                        "type": "string"
-                    },
-                    "branches": {
-                        "title": "Branches",
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/Branch"
-                        }
-                    }
-                }
-            },
-            "Priority": {
-                "title": "Priority",
-                "enum": [
-                    "UNKNOWN",
-                    "NON_ESSENTIAL",
-                    "NICE_TO_HAVE",
-                    "MUST_HAVE"
-                ],
-                "type": "string",
-                "description": "An enumeration."
-            },
-            "PriorityIn": {
-                "title": "PriorityIn",
-                "required": [
-                    "priority"
-                ],
-                "type": "object",
-                "properties": {
-                    "priority": {
-                        "$ref": "#/components/schemas/Priority"
-                    }
-                }
-            },
-            "RelayState": {
-                "title": "RelayState",
-                "enum": [
-                    "UNKNOWN",
-                    "OPEN",
-                    "CLOSED"
-                ],
-                "type": "string",
-                "description": "An enumeration."
-            },
-            "RelayStateIn": {
-                "title": "RelayStateIn",
-                "required": [
-                    "relayState"
-                ],
-                "type": "object",
-                "properties": {
-                    "relayState": {
-                        "$ref": "#/components/schemas/RelayState"
-                    }
-                }
-            },
-            "RelayStateOut": {
-                "title": "RelayStateOut",
-                "required": [
-                    "relayState"
-                ],
-                "type": "object",
-                "properties": {
-                    "relayState": {
-                        "title": "Relaystate",
-                        "type": "string"
-                    }
-                }
-            },
-            "SoftwareStatus": {
-                "title": "SoftwareStatus",
-                "required": [
-                    "firmwareVersion",
-                    "updateStatus",
-                    "env"
-                ],
-                "type": "object",
-                "properties": {
-                    "firmwareVersion": {
-                        "title": "Firmwareversion",
-                        "type": "string"
-                    },
-                    "updateStatus": {
-                        "title": "Updatestatus",
-                        "type": "string"
-                    },
-                    "env": {
-                        "title": "Env",
-                        "type": "string"
-                    }
-                }
-            },
-            "StateOfEnergy": {
-                "title": "StateOfEnergy",
-                "type": "object",
-                "properties": {
-                    "percentage": {
-                        "title": "Percentage",
-                        "type": "integer"
-                    }
-                }
-            },
-            "StatusOut": {
-                "title": "StatusOut",
-                "required": [
-                    "software",
-                    "system",
-                    "network"
-                ],
-                "type": "object",
-                "properties": {
-                    "software": {
-                        "$ref": "#/components/schemas/SoftwareStatus"
-                    },
-                    "system": {
-                        "$ref": "#/components/schemas/SystemStatus"
-                    },
-                    "network": {
-                        "$ref": "#/components/schemas/NetworkStatus"
-                    }
-                }
-            },
-            "SystemStatus": {
-                "title": "SystemStatus",
-                "required": [
-                    "manufacturer",
-                    "serial",
-                    "model",
-                    "doorState",
-                    "proximityProven",
-                    "uptime"
-                ],
-                "type": "object",
-                "properties": {
-                    "manufacturer": {
-                        "title": "Manufacturer",
-                        "type": "string"
-                    },
-                    "serial": {
-                        "title": "Serial",
-                        "type": "string"
-                    },
-                    "model": {
-                        "title": "Model",
-                        "type": "string"
-                    },
-                    "doorState": {
-                        "$ref": "#/components/schemas/DoorState"
-                    },
-                    "proximityProven": {
-                        "title": "Proximityproven",
-                        "type": "boolean"
-                    },
-                    "uptime": {
-                        "title": "Uptime",
-                        "type": "integer"
-                    }
-                }
-            },
-            "ValidationError": {
-                "title": "ValidationError",
-                "required": [
-                    "loc",
-                    "msg",
-                    "type"
-                ],
-                "type": "object",
-                "properties": {
-                    "loc": {
-                        "title": "Location",
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "msg": {
-                        "title": "Message",
-                        "type": "string"
-                    },
-                    "type": {
-                        "title": "Error Type",
-                        "type": "string"
-                    }
-                }
-            },
-            "WifiAccessPoint": {
-                "title": "WifiAccessPoint",
-                "required": [
-                    "bssid",
-                    "ssid",
-                    "signal",
-                    "frequency",
-                    "encrypted",
-                    "connected"
-                ],
-                "type": "object",
-                "properties": {
-                    "bssid": {
-                        "title": "Bssid",
-                        "type": "string"
-                    },
-                    "ssid": {
-                        "title": "Ssid",
-                        "type": "string"
-                    },
-                    "signal": {
-                        "title": "Signal",
-                        "type": "integer"
-                    },
-                    "frequency": {
-                        "title": "Frequency",
-                        "type": "string"
-                    },
-                    "encrypted": {
-                        "title": "Encrypted",
-                        "type": "boolean"
-                    },
-                    "connected": {
-                        "title": "Connected",
-                        "type": "boolean"
-                    },
-                    "error": {
-                        "title": "Error",
-                        "type": "string",
-                        "default": ""
-                    }
-                }
-            },
-            "WifiConnectIn": {
-                "title": "WifiConnectIn",
-                "required": [
-                    "ssid",
-                    "psk"
-                ],
-                "type": "object",
-                "properties": {
-                    "ssid": {
-                        "title": "Ssid",
-                        "type": "string"
-                    },
-                    "psk": {
-                        "title": "Psk",
-                        "type": "string"
-                    }
-                }
-            },
-            "WifiConnectOut": {
-                "title": "WifiConnectOut",
-                "required": [
-                    "bssid",
-                    "ssid",
-                    "signal",
-                    "encrypted",
-                    "connected",
-                    "error"
-                ],
-                "type": "object",
-                "properties": {
-                    "bssid": {
-                        "title": "Bssid",
-                        "type": "string"
-                    },
-                    "ssid": {
-                        "title": "Ssid",
-                        "type": "string"
-                    },
-                    "signal": {
-                        "title": "Signal",
-                        "type": "integer"
-                    },
-                    "encrypted": {
-                        "title": "Encrypted",
-                        "type": "boolean"
-                    },
-                    "connected": {
-                        "title": "Connected",
-                        "type": "boolean"
-                    },
-                    "error": {
-                        "title": "Error",
-                        "type": "string"
-                    }
-                }
-            },
-            "WifiScanOut": {
-                "title": "WifiScanOut",
-                "required": [
-                    "accessPoints"
-                ],
-                "type": "object",
-                "properties": {
-                    "accessPoints": {
-                        "title": "Accesspoints",
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/WifiAccessPoint"
-                        }
-                    }
-                }
+              }
             }
-        },
-        "securitySchemes": {
-            "HTTPBearer": {
-                "type": "http",
-                "scheme": "bearer"
+          },
+          "403": {
+            "description": "Certificate exists but cannot be accessed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "detail": {
+                      "type": "string",
+                      "example": "CA certificate not accessible"
+                    }
+                  }
+                }
+              }
             }
+          },
+          "413": {
+            "description": "Certificate file too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "detail": {
+                      "type": "string",
+                      "example": "Certificate file too large"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "detail": {
+                      "type": "string",
+                      "example": "Rate limit exceeded"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "detail": {
+                      "type": "string",
+                      "example": "Error serving CA certificate"
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
+      }
+    },
+    "/api/v2/status": {
+      "get": {
+        "tags": [
+          "v2",
+          "Public"
+        ],
+        "summary": "Get V2 Status",
+        "description": "Return minimal status with serialNumber, firmwareVersion, and proximityProven.",
+        "operationId": "get_v2_status_api_v2_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusV2Out"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/homie/schema": {
+      "get": {
+        "tags": [
+          "v2",
+          "Public"
+        ],
+        "summary": "Get Homie Schema",
+        "description": "Return Homie property schema with versioning metadata.",
+        "operationId": "get_homie_schema_api_v2_homie_schema_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HomieSchemaOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/auth/register": {
+      "post": {
+        "tags": [
+          "v1+v2"
+        ],
+        "summary": "Generate Jwt",
+        "operationId": "generate_jwt_api_v2_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": [
+          "v1+v2"
+        ],
+        "summary": "Generate Jwt",
+        "operationId": "generate_jwt_api_v1_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v2/auth/clients": {
+      "get": {
+        "tags": [
+          "v1+v2"
+        ],
+        "summary": "Get All Clients",
+        "operationId": "get_all_clients_api_v2_auth_clients_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Clients"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/clients": {
+      "get": {
+        "tags": [
+          "v1+v2"
+        ],
+        "summary": "Get All Clients",
+        "operationId": "get_all_clients_api_v1_auth_clients_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Clients"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v2/auth/clients/{name}": {
+      "get": {
+        "tags": [
+          "v1+v2"
+        ],
+        "summary": "Get Client",
+        "operationId": "get_client_api_v2_auth_clients__name__get",
+        "parameters": [
+          {
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            },
+            "name": "name",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Client"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "v1+v2"
+        ],
+        "summary": "Delete Client",
+        "operationId": "delete_client_api_v2_auth_clients__name__delete",
+        "parameters": [
+          {
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            },
+            "name": "name",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Client"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/clients/{name}": {
+      "get": {
+        "tags": [
+          "v1+v2"
+        ],
+        "summary": "Get Client",
+        "operationId": "get_client_api_v1_auth_clients__name__get",
+        "parameters": [
+          {
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            },
+            "name": "name",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Client"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "v1+v2"
+        ],
+        "summary": "Delete Client",
+        "operationId": "delete_client_api_v1_auth_clients__name__delete",
+        "parameters": [
+          {
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            },
+            "name": "name",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Client"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v2/auth/passphrase": {
+      "put": {
+        "tags": [
+          "v2"
+        ],
+        "summary": "Regenerate Passphrase",
+        "description": "Regenerate the ebusBrokerPassword.\nPublishes a regeneration command to MQTT and returns the new passphrase.\nRequires authentication.",
+        "operationId": "regenerate_passphrase_api_v2_auth_passphrase_put",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PassphraseOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/status": {
+      "get": {
+        "tags": [
+          "v1"
+        ],
+        "summary": "System Status",
+        "operationId": "system_status_api_v1_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/wifi/scan": {
+      "get": {
+        "tags": [
+          "v1"
+        ],
+        "summary": "Get Wifi Scan",
+        "operationId": "get_wifi_scan_api_v1_wifi_scan_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WifiScanOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/wifi/connect": {
+      "post": {
+        "tags": [
+          "v1"
+        ],
+        "summary": "Run Wifi Connect",
+        "operationId": "run_wifi_connect_api_v1_wifi_connect_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WifiConnectIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WifiConnectOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/panel": {
+      "get": {
+        "tags": [
+          "v1"
+        ],
+        "summary": "Get Panel State",
+        "operationId": "get_panel_state_api_v1_panel_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PanelState"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/islanding-state": {
+      "get": {
+        "tags": [
+          "v1"
+        ],
+        "summary": "Get Islanding State",
+        "operationId": "get_islanding_state_api_v1_islanding_state_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IslandingState"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/panel/grid": {
+      "get": {
+        "tags": [
+          "v1"
+        ],
+        "summary": "Get Main Relay State",
+        "operationId": "get_main_relay_state_api_v1_panel_grid_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelayStateOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "v1"
+        ],
+        "summary": "Set Main Relay State",
+        "operationId": "set_main_relay_state_api_v1_panel_grid_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelayStateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/panel/power": {
+      "get": {
+        "tags": [
+          "v1"
+        ],
+        "summary": "Get Panel Power",
+        "operationId": "get_panel_power_api_v1_panel_power_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PanelPower"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/panel/meter": {
+      "get": {
+        "tags": [
+          "v1"
+        ],
+        "summary": "Get Panel Meter",
+        "operationId": "get_panel_meter_api_v1_panel_meter_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PanelMeter"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/circuits": {
+      "get": {
+        "tags": [
+          "v1"
+        ],
+        "summary": "Get Circuits",
+        "operationId": "get_circuits_api_v1_circuits_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircuitsOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/circuits/{circuitId}": {
+      "get": {
+        "tags": [
+          "v1"
+        ],
+        "summary": "Get Circuit State",
+        "operationId": "get_circuit_state_api_v1_circuits__circuitId__get",
+        "parameters": [
+          {
+            "required": true,
+            "schema": {
+              "title": "Circuitid",
+              "type": "string"
+            },
+            "name": "circuitId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Circuit"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "v1"
+        ],
+        "summary": "Set Circuit State",
+        "operationId": "set_circuit_state_api_v1_circuits__circuitId__post",
+        "parameters": [
+          {
+            "required": true,
+            "schema": {
+              "title": "Circuitid",
+              "type": "string"
+            },
+            "name": "circuitId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_set_circuit_state_api_v1_circuits__circuitId__post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Circuit"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/panel/emergency-reconnect": {
+      "post": {
+        "tags": [
+          "v1"
+        ],
+        "summary": "Run Panel Emergency Reconnect",
+        "operationId": "run_panel_emergency_reconnect_api_v1_panel_emergency_reconnect_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/storage/soe": {
+      "get": {
+        "tags": [
+          "v1"
+        ],
+        "summary": "Get Storage Soe",
+        "operationId": "get_storage_soe_api_v1_storage_soe_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatteryStorage"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "v1"
+        ],
+        "summary": "Set Storage Soe",
+        "operationId": "set_storage_soe_api_v1_storage_soe_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatteryStorage"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatteryStorage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/storage/nice-to-have-thresh": {
+      "get": {
+        "tags": [
+          "v1"
+        ],
+        "summary": "Get Storage Nice To Have Threshold",
+        "operationId": "get_storage_nice_to_have_threshold_api_v1_storage_nice_to_have_thresh_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NiceToHaveThreshold"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "v1"
+        ],
+        "summary": "Set Storage Nice To Have Threshold",
+        "operationId": "set_storage_nice_to_have_threshold_api_v1_storage_nice_to_have_thresh_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NiceToHaveThreshold"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NiceToHaveThreshold"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v2/dns/fqdn": {
+      "get": {
+        "tags": [
+          "v2"
+        ],
+        "summary": "Get Fqdn",
+        "description": "Get the configured FQDN",
+        "operationId": "get_fqdn_api_v2_dns_fqdn_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FQDNResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "v2"
+        ],
+        "summary": "Set Fqdn",
+        "description": "Set the FQDN configuration",
+        "operationId": "set_fqdn_api_v2_dns_fqdn_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FQDNRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FQDNResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "v2"
+        ],
+        "summary": "Delete Fqdn",
+        "description": "Delete the FQDN configuration (set to null)",
+        "operationId": "delete_fqdn_api_v2_dns_fqdn_delete",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FQDNResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     }
+  },
+  "components": {
+    "schemas": {
+      "AllowedEndpointGroups": {
+        "title": "AllowedEndpointGroups",
+        "required": [
+          "delete",
+          "get",
+          "post",
+          "put"
+        ],
+        "type": "object",
+        "properties": {
+          "delete": {
+            "title": "Delete",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "get": {
+            "title": "Get",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "post": {
+            "title": "Post",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "put": {
+            "title": "Put",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "patch": {
+            "title": "Patch",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          }
+        }
+      },
+      "AuthIn": {
+        "title": "AuthIn",
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "otp": {
+            "title": "Otp",
+            "type": "string"
+          },
+          "dashboardPassword": {
+            "title": "Dashboardpassword",
+            "type": "string"
+          },
+          "hopPassphrase": {
+            "title": "Hoppassphrase",
+            "type": "string"
+          }
+        }
+      },
+      "AuthOut": {
+        "title": "AuthOut",
+        "required": [
+          "accessToken",
+          "tokenType",
+          "iatMs",
+          "hostname",
+          "serialNumber",
+          "hopPassphrase",
+          "ebusBrokerUsername",
+          "ebusBrokerPassword",
+          "ebusBrokerHost",
+          "ebusBrokerMqttsPort",
+          "ebusBrokerWsPort",
+          "ebusBrokerWssPort"
+        ],
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "title": "Accesstoken",
+            "type": "string"
+          },
+          "tokenType": {
+            "title": "Tokentype",
+            "type": "string"
+          },
+          "iatMs": {
+            "title": "Iatms",
+            "type": "integer"
+          },
+          "hostname": {
+            "title": "Hostname",
+            "type": "string"
+          },
+          "serialNumber": {
+            "title": "Serialnumber",
+            "type": "string"
+          },
+          "hopPassphrase": {
+            "title": "Hoppassphrase",
+            "type": "string"
+          },
+          "ebusBrokerUsername": {
+            "title": "Ebusbrokerusername",
+            "type": "string"
+          },
+          "ebusBrokerPassword": {
+            "title": "Ebusbrokerpassword",
+            "type": "string"
+          },
+          "ebusBrokerHost": {
+            "title": "Ebusbrokerhost",
+            "type": "string"
+          },
+          "ebusBrokerMqttsPort": {
+            "title": "Ebusbrokermqttsport",
+            "type": "integer"
+          },
+          "ebusBrokerWsPort": {
+            "title": "Ebusbrokerwsport",
+            "type": "integer"
+          },
+          "ebusBrokerWssPort": {
+            "title": "Ebusbrokerwssport",
+            "type": "integer"
+          }
+        }
+      },
+      "BatteryStorage": {
+        "title": "BatteryStorage",
+        "required": [
+          "soe"
+        ],
+        "type": "object",
+        "properties": {
+          "soe": {
+            "$ref": "#/components/schemas/StateOfEnergy"
+          }
+        }
+      },
+      "Body_set_circuit_state_api_v1_circuits__circuitId__post": {
+        "title": "Body_set_circuit_state_api_v1_circuits__circuitId__post",
+        "type": "object",
+        "properties": {
+          "relayStateIn": {
+            "$ref": "#/components/schemas/RelayStateIn"
+          },
+          "priorityIn": {
+            "$ref": "#/components/schemas/PriorityIn"
+          },
+          "circuitNameIn": {
+            "$ref": "#/components/schemas/CircuitNameIn"
+          },
+          "userControllableIn": {
+            "$ref": "#/components/schemas/BooleanIn"
+          },
+          "sheddableIn": {
+            "$ref": "#/components/schemas/BooleanIn"
+          },
+          "neverBackupIn": {
+            "$ref": "#/components/schemas/BooleanIn"
+          }
+        }
+      },
+      "BooleanIn": {
+        "title": "BooleanIn",
+        "required": [
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "title": "Value",
+            "type": "boolean"
+          }
+        }
+      },
+      "Branch": {
+        "title": "Branch",
+        "required": [
+          "id",
+          "relayState",
+          "instantPowerW",
+          "importedActiveEnergyWh",
+          "exportedActiveEnergyWh",
+          "measureStartTsMs",
+          "measureDurationMs",
+          "isMeasureValid"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "relayState": {
+            "$ref": "#/components/schemas/RelayState"
+          },
+          "instantPowerW": {
+            "title": "Instantpowerw",
+            "type": "number"
+          },
+          "importedActiveEnergyWh": {
+            "title": "Importedactiveenergywh",
+            "type": "number"
+          },
+          "exportedActiveEnergyWh": {
+            "title": "Exportedactiveenergywh",
+            "type": "number"
+          },
+          "measureStartTsMs": {
+            "title": "Measurestarttsms",
+            "type": "integer"
+          },
+          "measureDurationMs": {
+            "title": "Measuredurationms",
+            "type": "integer"
+          },
+          "isMeasureValid": {
+            "title": "Ismeasurevalid",
+            "type": "boolean"
+          }
+        }
+      },
+      "Circuit": {
+        "title": "Circuit",
+        "required": [
+          "id",
+          "relayState",
+          "instantPowerW",
+          "instantPowerUpdateTimeS",
+          "producedEnergyWh",
+          "consumedEnergyWh",
+          "energyAccumUpdateTimeS",
+          "priority",
+          "isUserControllable",
+          "isSheddable",
+          "isNeverBackup"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "relayState": {
+            "$ref": "#/components/schemas/RelayState"
+          },
+          "instantPowerW": {
+            "title": "Instantpowerw",
+            "type": "number"
+          },
+          "instantPowerUpdateTimeS": {
+            "title": "Instantpowerupdatetimes",
+            "type": "integer"
+          },
+          "producedEnergyWh": {
+            "title": "Producedenergywh",
+            "type": "number"
+          },
+          "consumedEnergyWh": {
+            "title": "Consumedenergywh",
+            "type": "number"
+          },
+          "energyAccumUpdateTimeS": {
+            "title": "Energyaccumupdatetimes",
+            "type": "integer"
+          },
+          "tabs": {
+            "title": "Tabs",
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "priority": {
+            "$ref": "#/components/schemas/Priority"
+          },
+          "isUserControllable": {
+            "title": "Isusercontrollable",
+            "type": "boolean"
+          },
+          "isSheddable": {
+            "title": "Issheddable",
+            "type": "boolean"
+          },
+          "isNeverBackup": {
+            "title": "Isneverbackup",
+            "type": "boolean"
+          }
+        }
+      },
+      "CircuitNameIn": {
+        "title": "CircuitNameIn",
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        }
+      },
+      "CircuitsOut": {
+        "title": "CircuitsOut",
+        "required": [
+          "circuits"
+        ],
+        "type": "object",
+        "properties": {
+          "circuits": {
+            "title": "Circuits",
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Circuit"
+            }
+          }
+        }
+      },
+      "Client": {
+        "title": "Client",
+        "required": [
+          "allowed_endpoint_groups"
+        ],
+        "type": "object",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "issued_at": {
+            "title": "Issued At",
+            "type": "integer"
+          },
+          "allowed_endpoint_groups": {
+            "$ref": "#/components/schemas/AllowedEndpointGroups"
+          }
+        }
+      },
+      "Clients": {
+        "title": "Clients",
+        "required": [
+          "clients"
+        ],
+        "type": "object",
+        "properties": {
+          "clients": {
+            "title": "Clients",
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Client"
+            }
+          }
+        }
+      },
+      "DoorState": {
+        "title": "DoorState",
+        "enum": [
+          "UNKNOWN",
+          "OPEN",
+          "CLOSED"
+        ],
+        "type": "string",
+        "description": "An enumeration."
+      },
+      "FQDNRequest": {
+        "title": "FQDNRequest",
+        "type": "object",
+        "properties": {
+          "ebusTlsFqdn": {
+            "title": "Ebustlsfqdn",
+            "type": "string"
+          }
+        },
+        "description": "Request model for setting FQDN"
+      },
+      "FQDNResponse": {
+        "title": "FQDNResponse",
+        "type": "object",
+        "properties": {
+          "ebusTlsFqdn": {
+            "title": "Ebustlsfqdn",
+            "type": "string"
+          }
+        },
+        "description": "Response model for FQDN endpoints"
+      },
+      "FeedthroughEnergy": {
+        "title": "FeedthroughEnergy",
+        "required": [
+          "producedEnergyWh",
+          "consumedEnergyWh"
+        ],
+        "type": "object",
+        "properties": {
+          "producedEnergyWh": {
+            "title": "Producedenergywh",
+            "type": "number"
+          },
+          "consumedEnergyWh": {
+            "title": "Consumedenergywh",
+            "type": "number"
+          }
+        }
+      },
+      "HTTPValidationError": {
+        "title": "HTTPValidationError",
+        "type": "object",
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            }
+          }
+        }
+      },
+      "HomieSchemaOut": {
+        "title": "HomieSchemaOut",
+        "required": [
+          "firmwareVersion",
+          "homieDomain",
+          "homieVersion",
+          "types",
+          "typesSchemaHash"
+        ],
+        "type": "object",
+        "properties": {
+          "firmwareVersion": {
+            "title": "Firmwareversion",
+            "type": "string"
+          },
+          "homieDomain": {
+            "title": "Homiedomain",
+            "type": "string"
+          },
+          "homieVersion": {
+            "title": "Homieversion",
+            "type": "integer"
+          },
+          "types": {
+            "title": "Types",
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object"
+              }
+            }
+          },
+          "typesSchemaHash": {
+            "title": "Typesschemahash",
+            "type": "string"
+          }
+        },
+        "description": "Enhanced Homie schema response with versioning metadata."
+      },
+      "IslandingState": {
+        "title": "IslandingState",
+        "required": [
+          "islanding_state"
+        ],
+        "type": "object",
+        "properties": {
+          "islanding_state": {
+            "title": "Islanding State",
+            "type": "string"
+          }
+        }
+      },
+      "MainMeterEnergy": {
+        "title": "MainMeterEnergy",
+        "required": [
+          "producedEnergyWh",
+          "consumedEnergyWh"
+        ],
+        "type": "object",
+        "properties": {
+          "producedEnergyWh": {
+            "title": "Producedenergywh",
+            "type": "number"
+          },
+          "consumedEnergyWh": {
+            "title": "Consumedenergywh",
+            "type": "number"
+          }
+        }
+      },
+      "NetworkStatus": {
+        "title": "NetworkStatus",
+        "required": [
+          "eth0Link",
+          "wlanLink",
+          "wwanLink"
+        ],
+        "type": "object",
+        "properties": {
+          "eth0Link": {
+            "title": "Eth0Link",
+            "type": "boolean"
+          },
+          "wlanLink": {
+            "title": "Wlanlink",
+            "type": "boolean"
+          },
+          "wwanLink": {
+            "title": "Wwanlink",
+            "type": "boolean"
+          }
+        }
+      },
+      "NiceToHaveThreshold": {
+        "title": "NiceToHaveThreshold",
+        "type": "object",
+        "properties": {
+          "nice_to_have_threshold_low_soe": {
+            "$ref": "#/components/schemas/StateOfEnergy"
+          },
+          "nice_to_have_threshold_high_soe": {
+            "$ref": "#/components/schemas/StateOfEnergy"
+          }
+        }
+      },
+      "PanelMeter": {
+        "title": "PanelMeter",
+        "required": [
+          "mainMeter",
+          "feedthrough"
+        ],
+        "type": "object",
+        "properties": {
+          "mainMeter": {
+            "$ref": "#/components/schemas/MainMeterEnergy"
+          },
+          "feedthrough": {
+            "$ref": "#/components/schemas/FeedthroughEnergy"
+          }
+        }
+      },
+      "PanelPower": {
+        "title": "PanelPower",
+        "required": [
+          "instantGridPowerW",
+          "feedthroughPowerW"
+        ],
+        "type": "object",
+        "properties": {
+          "instantGridPowerW": {
+            "title": "Instantgridpowerw",
+            "type": "number"
+          },
+          "feedthroughPowerW": {
+            "title": "Feedthroughpowerw",
+            "type": "number"
+          }
+        }
+      },
+      "PanelState": {
+        "title": "PanelState",
+        "required": [
+          "mainRelayState",
+          "mainMeterEnergy",
+          "instantGridPowerW",
+          "feedthroughPowerW",
+          "feedthroughEnergy",
+          "gridSampleStartMs",
+          "gridSampleEndMs",
+          "dsmGridState",
+          "dsmState",
+          "currentRunConfig",
+          "branches"
+        ],
+        "type": "object",
+        "properties": {
+          "mainRelayState": {
+            "$ref": "#/components/schemas/RelayState"
+          },
+          "mainMeterEnergy": {
+            "$ref": "#/components/schemas/MainMeterEnergy"
+          },
+          "instantGridPowerW": {
+            "title": "Instantgridpowerw",
+            "type": "number"
+          },
+          "feedthroughPowerW": {
+            "title": "Feedthroughpowerw",
+            "type": "number"
+          },
+          "feedthroughEnergy": {
+            "$ref": "#/components/schemas/FeedthroughEnergy"
+          },
+          "gridSampleStartMs": {
+            "title": "Gridsamplestartms",
+            "type": "integer"
+          },
+          "gridSampleEndMs": {
+            "title": "Gridsampleendms",
+            "type": "integer"
+          },
+          "dsmGridState": {
+            "title": "Dsmgridstate",
+            "type": "string"
+          },
+          "dsmState": {
+            "title": "Dsmstate",
+            "type": "string"
+          },
+          "currentRunConfig": {
+            "title": "Currentrunconfig",
+            "type": "string"
+          },
+          "branches": {
+            "title": "Branches",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Branch"
+            }
+          }
+        }
+      },
+      "PassphraseOut": {
+        "title": "PassphraseOut",
+        "required": [
+          "ebusBrokerPassword",
+          "hopPassphrase"
+        ],
+        "type": "object",
+        "properties": {
+          "ebusBrokerPassword": {
+            "title": "Ebusbrokerpassword",
+            "type": "string"
+          },
+          "hopPassphrase": {
+            "title": "Hoppassphrase",
+            "type": "string"
+          }
+        }
+      },
+      "Priority": {
+        "title": "Priority",
+        "enum": [
+          "UNKNOWN",
+          "NON_ESSENTIAL",
+          "NICE_TO_HAVE",
+          "MUST_HAVE"
+        ],
+        "type": "string",
+        "description": "An enumeration."
+      },
+      "PriorityIn": {
+        "title": "PriorityIn",
+        "required": [
+          "priority"
+        ],
+        "type": "object",
+        "properties": {
+          "priority": {
+            "$ref": "#/components/schemas/Priority"
+          }
+        }
+      },
+      "RelayState": {
+        "title": "RelayState",
+        "enum": [
+          "UNKNOWN",
+          "OPEN",
+          "CLOSED"
+        ],
+        "type": "string",
+        "description": "An enumeration."
+      },
+      "RelayStateIn": {
+        "title": "RelayStateIn",
+        "required": [
+          "relayState"
+        ],
+        "type": "object",
+        "properties": {
+          "relayState": {
+            "$ref": "#/components/schemas/RelayState"
+          }
+        }
+      },
+      "RelayStateOut": {
+        "title": "RelayStateOut",
+        "required": [
+          "relayState"
+        ],
+        "type": "object",
+        "properties": {
+          "relayState": {
+            "title": "Relaystate",
+            "type": "string"
+          }
+        }
+      },
+      "SoftwareStatus": {
+        "title": "SoftwareStatus",
+        "required": [
+          "firmwareVersion",
+          "updateStatus",
+          "env"
+        ],
+        "type": "object",
+        "properties": {
+          "firmwareVersion": {
+            "title": "Firmwareversion",
+            "type": "string"
+          },
+          "updateStatus": {
+            "title": "Updatestatus",
+            "type": "string"
+          },
+          "env": {
+            "title": "Env",
+            "type": "string"
+          }
+        }
+      },
+      "StateOfEnergy": {
+        "title": "StateOfEnergy",
+        "type": "object",
+        "properties": {
+          "percentage": {
+            "title": "Percentage",
+            "type": "integer"
+          }
+        }
+      },
+      "StatusOut": {
+        "title": "StatusOut",
+        "required": [
+          "software",
+          "system",
+          "network"
+        ],
+        "type": "object",
+        "properties": {
+          "software": {
+            "$ref": "#/components/schemas/SoftwareStatus"
+          },
+          "system": {
+            "$ref": "#/components/schemas/SystemStatus"
+          },
+          "network": {
+            "$ref": "#/components/schemas/NetworkStatus"
+          }
+        }
+      },
+      "StatusV2Out": {
+        "title": "StatusV2Out",
+        "required": [
+          "serialNumber",
+          "firmwareVersion",
+          "proximityProven"
+        ],
+        "type": "object",
+        "properties": {
+          "serialNumber": {
+            "title": "Serialnumber",
+            "type": "string"
+          },
+          "firmwareVersion": {
+            "title": "Firmwareversion",
+            "type": "string"
+          },
+          "proximityProven": {
+            "title": "Proximityproven",
+            "type": "boolean"
+          }
+        },
+        "description": "Minimal v2 status response with essential identification fields."
+      },
+      "SystemStatus": {
+        "title": "SystemStatus",
+        "required": [
+          "manufacturer",
+          "serial",
+          "model",
+          "doorState",
+          "proximityProven",
+          "uptime"
+        ],
+        "type": "object",
+        "properties": {
+          "manufacturer": {
+            "title": "Manufacturer",
+            "type": "string"
+          },
+          "serial": {
+            "title": "Serial",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "doorState": {
+            "$ref": "#/components/schemas/DoorState"
+          },
+          "proximityProven": {
+            "title": "Proximityproven",
+            "type": "boolean"
+          },
+          "uptime": {
+            "title": "Uptime",
+            "type": "integer"
+          }
+        }
+      },
+      "ValidationError": {
+        "title": "ValidationError",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "loc": {
+            "title": "Location",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        }
+      },
+      "WifiAccessPoint": {
+        "title": "WifiAccessPoint",
+        "required": [
+          "bssid",
+          "ssid",
+          "signal",
+          "frequency",
+          "encrypted",
+          "connected"
+        ],
+        "type": "object",
+        "properties": {
+          "bssid": {
+            "title": "Bssid",
+            "type": "string"
+          },
+          "ssid": {
+            "title": "Ssid",
+            "type": "string"
+          },
+          "signal": {
+            "title": "Signal",
+            "type": "integer"
+          },
+          "frequency": {
+            "title": "Frequency",
+            "type": "string"
+          },
+          "encrypted": {
+            "title": "Encrypted",
+            "type": "boolean"
+          },
+          "connected": {
+            "title": "Connected",
+            "type": "boolean"
+          },
+          "error": {
+            "title": "Error",
+            "type": "string",
+            "default": ""
+          }
+        }
+      },
+      "WifiConnectIn": {
+        "title": "WifiConnectIn",
+        "required": [
+          "ssid",
+          "psk"
+        ],
+        "type": "object",
+        "properties": {
+          "ssid": {
+            "title": "Ssid",
+            "type": "string"
+          },
+          "psk": {
+            "title": "Psk",
+            "type": "string"
+          }
+        }
+      },
+      "WifiConnectOut": {
+        "title": "WifiConnectOut",
+        "required": [
+          "bssid",
+          "ssid",
+          "signal",
+          "encrypted",
+          "connected",
+          "error"
+        ],
+        "type": "object",
+        "properties": {
+          "bssid": {
+            "title": "Bssid",
+            "type": "string"
+          },
+          "ssid": {
+            "title": "Ssid",
+            "type": "string"
+          },
+          "signal": {
+            "title": "Signal",
+            "type": "integer"
+          },
+          "encrypted": {
+            "title": "Encrypted",
+            "type": "boolean"
+          },
+          "connected": {
+            "title": "Connected",
+            "type": "boolean"
+          },
+          "error": {
+            "title": "Error",
+            "type": "string"
+          }
+        }
+      },
+      "WifiScanOut": {
+        "title": "WifiScanOut",
+        "required": [
+          "accessPoints"
+        ],
+        "type": "object",
+        "properties": {
+          "accessPoints": {
+            "title": "Accesspoints",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WifiAccessPoint"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
 }

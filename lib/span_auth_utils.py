@@ -62,15 +62,16 @@ def save_auth_file(data: dict) -> None:
     """Save credentials to file with secure permissions."""
     path = get_auth_file_path()
 
-    # Ensure parent directory exists
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Write with restricted permissions
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2)
+    # Create the file with 0600 atomically via a custom opener, so the
+    # access-token contents are never visible to other users on the system
+    # between file creation and a follow-up chmod.
+    def _open_0600(file_path, flags):
+        return os.open(file_path, flags, stat.S_IRUSR | stat.S_IWUSR)
 
-    # Set permissions to 600 (owner read/write only)
-    os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+    with open(path, "w", opener=_open_0600) as f:
+        json.dump(data, f, indent=2)
 
 
 def get_panel_credentials(serial_number: Optional[str] = None) -> Optional[dict]:

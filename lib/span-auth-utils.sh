@@ -18,7 +18,14 @@ check_file_permissions() {
     fi
 
     local perms
-    perms=$(stat -f "%Lp" "$path" 2>/dev/null || stat -c "%a" "$path" 2>/dev/null)
+    if [[ "$OSTYPE" == linux-gnu* ]]; then
+        perms=$(stat -c "%a" "$path" 2>/dev/null)
+    elif [[ "$OSTYPE" == darwin* || "$OSTYPE" == *bsd* ]]; then
+        perms=$(stat -f "%Lp" "$path" 2>/dev/null)
+    else
+        echo "Warning: unknown OS type '$OSTYPE'; skipping permission check on $path" >&2
+        return 0
+    fi
 
     if [[ "$perms" != "600" ]]; then
         echo "Warning: $path has insecure permissions ($perms). Run 'chmod 600 $path' to fix." >&2

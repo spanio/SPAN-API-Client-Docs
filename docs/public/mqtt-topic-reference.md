@@ -241,18 +241,13 @@ ebus/5/<device-id>/<circuit-uuid>/shed-priority/set   → "NEVER"
 
 ---
 
-## Energy Direction Convention
+## Energy and Power Sign Conventions
 
-Energy direction is defined from the **panel's perspective**:
-
-| Context | `imported-energy` | `exported-energy` |
-|---|---|---|
-| Upstream lugs | Energy from grid into panel | Energy from panel to grid |
-| Downstream lugs | Energy from sub-panel into panel | Energy from panel to sub-panel |
-| Circuit | Energy from circuit back to panel (backfeed/generation) | Energy from panel to circuit (consumption) |
-
-For `active-power` on circuits: negative values indicate consumption,
-positive values indicate generation (e.g., a PV-feeding circuit).
+All `imported-energy`, `exported-energy`, and `active-power` properties
+follow a single panel-perspective convention. See
+[Power and Energy Conventions](power-and-energy-conventions.md) for the
+full reference — per-context meaning, sign rules, worked example, and
+the v1 REST ↔ v2 Homie field-name mapping.
 
 ---
 

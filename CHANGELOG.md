@@ -6,13 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 SPAN API versions are tied to SPAN Panel firmware releases using the format `rYYYYWW`.
 
+## Release 202621
+
+### Added
+
+- **SPAN Home On-premise (HOP) dashboard: auto-login via URL query parameter.** The Local Dashboard login page now accepts an optional `passphrase` query parameter that triggers automatic authentication, enabling deep-linking directly into an authenticated session without manual passphrase entry. URL format: `http://<panel-ip>/login?passphrase=<hopPassphrase>`. The `passphrase` parameter is immediately stripped from the URL after consumption to prevent exposure in browser history. See [HOP Dashboard Auto-Login](docs/public/hop-dashboard-auto-login.md) for the full feature documentation.
+
+### Fixed
+
+- Homie/MQTT: The `<panel>/lugs-downstream/active-power`, `imported-energy`, and `exported-energy` properties (feedthrough lug metering) previously reported `0` regardless of actual load on the downstream lugs. They now report the correct measured values.
+- Homie/MQTT: The panel's `pcs/*` properties (`enabled`, `active`, `import-limit`, and the CSL family — `feed-import-limit` / `grid-import-limit` / `off-grid-import-limit` / `requested-import-limit`, each with its `-enablement` and `-active` companions) previously published default / empty values. On panels where PowerUp is configured, these properties now reflect the panel's live PowerUp state.
+- The per-release `specs/<release>/openapi.json` artifacts published in earlier releases (`r202603`, `r202609`, `r202615`) were incomplete and have been republished with correct content. The spec-capture tooling now generates the OpenAPI document from the actual firmware source for each release.
+
 ## Release 202615
 
 ### Fixed
 
 - Homie/MQTT: Fixed EVSE `lock-state` enum format from `UNKNOWN,LOCKED,UNLOCKED`
-  to `UNLOCKED,LOCKED` — removed invalid `UNKNOWN` value to match actual OCPP-derived states
-  ([#9](https://github.com/spanio/SPAN-API-Client-Docs/issues/9))
+  to `UNLOCKED,LOCKED` — removed invalid `UNKNOWN` value, lock state is mechanical
+  (LOCKED/UNLOCKED) and has no UNKNOWN representation in firmware
 - REST: `POST /api/v2/dns/fqdn` now permitted for authenticated clients — previously
   returned 403 for all client types
   ([#10](https://github.com/spanio/SPAN-API-Client-Docs/issues/10))
@@ -32,6 +44,16 @@ SPAN API versions are tied to SPAN Panel firmware releases using the format `rYY
   definitions (`mdns-services.json`)
 
 ## Release 202609
+
+### Changed
+
+- Homie/MQTT: Narrowed the `evse/status` enum format from the full OCPP-1.6
+  `ChargePointStatus` set (`UNKNOWN,AVAILABLE,PREPARING,CHARGING,SUSPENDED_EV,SUSPENDED_EVSE,FINISHING,RESERVED,FAULTED,UNAVAILABLE`)
+  down to the four values firmware actually emits: `AVAILABLE,PREPARING,CHARGING,UNAVAILABLE`.
+  The four-value set reflects the current best-effort mapping from the underlying
+  J1772 pilot state; the broader OCPP states are not reachable on this generation
+  of firmware. The schema's `format` field and the runtime publisher are generated
+  from the same enum, so they are kept in sync by construction.
 
 ### Fixed
 
