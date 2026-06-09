@@ -896,7 +896,6 @@ The hosted Wi-Fi AP is powered by SPAN Panel directly, consequently might be the
 ### [SPAN Panel & SPAN API Networking Recommended Best Practices](#span-panel--span-api-networking-recommended-best-practices)
 
 - The SPAN Panel connection to the home’s LAN **SHOULD** be via hardwired Ethernet, using the `eth0` interface.
-<<<<<<< HEAD
 - Only **one** client interface (`eth0` or `wlan0`) **SHOULD** be connected to the home LAN at a time. If both must be active, they **MUST** be on different subnets. Having both on the same subnet causes mDNS hostname collisions (see [network architecture documentation](docs/public/span-panel-network-architecture.md) for details). Starting with firmware r202615, the panel automatically mitigates this by suppressing mDNS on `wlan0` when a shared subnet is detected.
 - The home LAN **MUST NOT** use the `10.42.0.0/24` or `10.42.1.0/24` subnet ranges. These are used internally by SPAN Panel’s hosted interfaces (`wlan0_ap` and `eth1` respectively). A client interface assigned an IP in these ranges will conflict with the panel’s hosted networks.
 - The home’s LAN infrastructure (e.g. Ethernet switch) **SHOULD** maintain (backup) power during grid-outages, or other power interruptions.
