@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 SPAN API versions are tied to SPAN Panel firmware releases using the format `rYYYYWW`.
 
+## Release 202627
+
+### Added
+
+- Homie/MQTT: The EVSE node (`energy.ebus.device.evse`) gains two charge-current properties for the SPAN Drive EVSE. `max-charge-current` (integer, amps) reports the commissioned maximum charge current set at installation and is read-only. `user-max-charge-current` (integer, amps, settable) is the user-configured charge-current ceiling.
+
 ## Release 202621
 
 ### Added
