@@ -34,12 +34,14 @@ POST /api/v1/auth/register
 Content-Type: application/json
 
 {
-  "name": "local-dashboard",
+  "name": "dashboard",
   "hopPassphrase": "<value from query param>"
 }
 ```
 
-This is the same endpoint used by the manual login form — the query parameter simply automates the submission.
+This is the same endpoint used by the manual login form; the query parameter simply automates the submission.
+
+The client `name` is significant. `dashboard` is the one name the panel treats as re-registrable: registering it again replaces the existing client, which is what lets auto-login run repeatedly. Registering any other name a second time is rejected with `422 Unprocessable Entity` and the message `Name already exists`, so a client that used its own name here would authenticate once and fail on every later attempt.
 
 ## Behavior
 

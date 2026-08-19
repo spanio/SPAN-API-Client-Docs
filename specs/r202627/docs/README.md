@@ -1,11 +1,10 @@
+> **ARCHIVED: SPAN API flat data model (r202603-r202627), frozen.** This is the previous single-device SPAN API documentation, retained for integrations not yet migrated to the r202633 parent/child data model. It will be removed once fleet migration completes. See [`INDEX.md`](INDEX.md) for scope and migration pointers; for the current API, see [docs/public/](../../../docs/public/).
+
 # SPAN API
 
 [SPAN](https://www.span.io/) provides SPAN API to enable software integrations between [SPAN Panel](https://www.span.io/panel) and other devices within the home for the personal, non-commercial use of the SPAN Panel owner or authorized user.
 
 SPAN API is initially available for [SPAN Panel MAIN 32](https://www.span.io/products/main-32) as a public beta release.
-
-> [!IMPORTANT]
-> **Breaking change in `r202633`.** The MQTT/Homie data model changes from a single flat device to a parent/child device plus capabilities model. Existing integrations built against the earlier flat model (releases `r202603` through `r202627`) should follow the [SPAN Panel eBus Schema Migration Guide](docs/public/ebus-schema-migration-guide.md) to transition; the previous flat-model documentation is archived at [`specs/r202627/docs/`](specs/r202627/docs/).
 
 > **Notice:** SPAN API is an optional, advanced integration interface for elective use by SPAN Panel owners, residential power users and developers, subject to the restrictions set forth in this GitHub repository, and is not required for normal SPAN Panel operation.
 >
@@ -43,7 +42,7 @@ SPAN is aware of requests from advanced users and developers for a broader scope
 
 SPAN API is an optional, advanced local interface that runs directly on SPAN Panel and is intended for developers and power users. It is not a hosted or cloud service operated by SPAN.
 
-The documentation and example code in this repository are provided under the [MIT No Attribution (MIT-0) license](LICENSE) to support development of integrations and tools that interact with SPAN Panel.
+The documentation and example code in this repository are provided under the [MIT No Attribution (MIT-0) license](../../../LICENSE) to support development of integrations and tools that interact with SPAN Panel.
 
 Homeowners **SHOULD** only grant SPAN API access to software and developers they trust. Because access is credential-based and locally controlled, SPAN is not responsible for the operation, security, or outcomes of any application, integration, or automation enabled by any homeowner. Use within the home or with access to the home network of SPAN API in combination with software developed by the homeowner, or third-party software integrations (the foregoing sometimes being referred to as "SPAN API clients"), is at the homeowner's sole discretion and risk, and SPAN expressly disclaims any and all liability with respect thereto.
 
@@ -177,7 +176,7 @@ The eBus MQTT broker enforces access controls on what authenticated clients can 
 
 Clients **may** publish to other device topic trees under `ebus/5/` to support multi-device eBus integrations.
 
-See [MQTT Broker Permissions](docs/public/mqtt-broker-permissions.md) for details.
+See [MQTT Broker Permissions](mqtt-broker-permissions.md) for details.
 
 #### [MQTT Topic and Message Structure](#mqtt-topic-and-message-structure)
 
@@ -188,13 +187,9 @@ The Homie/eBus topic structure follows the pattern:
 
 SPAN API publishes:
 
-- A **parent device**, the panel, whose device ID is the serial number of SPAN Panel.
-- A set of **child devices**: the panel's lugs, each circuit, and each commissioned integration (a SPAN Drive EV charger, a solar / PV system, or an energy storage system). Each child device has its own device ID, `$state`, and `$description`, and appears in its parent's `$description.children` array. Most children are parented by the panel; a commissioned energy storage system additionally publishes its **MID** (Microgrid Interconnect Device) as a child of the BESS (a grandchild of the panel), so the MID appears in the BESS's `children` array, not the panel's.
-- Properties on each device are grouped into **capability nodes** (for example `info`, `meter`, `switch`), and each capability node publishes a number of property IDs.
-
-See the [MQTT Topic Reference](docs/public/mqtt-topic-reference.md) for the full topic structure, device-ID forms, and per-property details.
-
-> **Major breaking change in `r202633`.** SPAN API moved from a single-device (flat) model to this parent/child device + capabilities model. This is a breaking change to the MQTT/Homie surface. Integrations built against the earlier flat model (releases `r202603` through `r202627`) should follow the [SPAN Panel eBus Schema Migration Guide](docs/public/ebus-schema-migration-guide.md) to transition. The previous flat-model documentation is archived, frozen, at [`specs/r202627/docs/`](specs/r202627/docs/).
+- A single device, the device ID being the serial number of SPAN Panel
+- A number of nodes, some nodes are always provided, other nodes are dependent on the commissioned state of SPAN Panel; the individual circuits, and associated integrations, including SPAN Drive, energy storage (backup) systems, etc.
+- Each node publishes a number of property IDs.
 
 > **Note on Serial Number Naming:** The serial number of SPAN Panel appears in different naming conventions depending on context: `serialNumber` (camelCase) in JSON/REST responses, `serial-number` (kebab-case) in Homie property names, and `serial_number` (snake_case) in mDNS TXT records. These all refer to the same value (e.g., `ab-1234-c5d67`). This document uses `<serial>` as shorthand in topic patterns.
 
@@ -216,38 +211,30 @@ The SPAN Panel device type is:
 energy.ebus.device.distribution-enclosure
 ```
 
-Child device types use the `energy.ebus.device.` prefix with a class-specific suffix (e.g., `energy.ebus.device.circuit`, `energy.ebus.device.bess`). Capability nodes use the `energy.ebus.capability.` prefix (e.g., `energy.ebus.capability.info`, `energy.ebus.capability.meter`).
+Node types use the `energy.ebus.device.` prefix, with type-specific suffixes (e.g., `energy.ebus.device.circuit`, `energy.ebus.device.bess`). The `core` node retains the full device type prefix: `energy.ebus.device.distribution-enclosure.core`.
 
 ##### [SPAN Panel Component Mapping to Homie/eBus](#span-panel-component-mapping-to-homieebus)
 
-The panel is the parent device (`energy.ebus.device.distribution-enclosure`). Its own properties are grouped into capability nodes, and its components are published as child devices, each with its own capability nodes.
+SPAN Panel components are represented as Homie/eBus nodes, each having a type. Most node types use the `energy.ebus.device.` prefix with a type-specific suffix.
 
-The panel publishes these capability nodes:
+The following nodes/types are published for all SPAN Panels:
 
-| Capability | Description |
+| Type Suffix | Description |
 | :---- | :---- |
-| `info` | Panel identity and data-model version |
-| `door` | Door state |
-| `status` | Network, main-relay, and cloud-connection status |
-| `meter` | Panel voltage |
-| `breaker` | Main breaker rating |
-| `power-flows` | Aggregate power flows for the home |
-| `pcs` | UL 3141 Power Control System (SPAN PowerUp®) |
-| `shed-forecast` | Battery Time Remaining forecast (when a BESS is commissioned) |
-| `shed` | Load-shed controls (when a BESS is commissioned) |
+| `core` | SPAN Panel-wide properties |
+| `lugs.upstream` | Input lugs |
+| `lugs.downstream` | Output lugs |
+| `power-flows` | Known power flows for the home |
+| `circuit` | Per-circuit data (one node per commissioned circuit) |
 
-The panel publishes these child device classes:
+The following nodes/types may be published depending on SPAN Panel commissioning:
 
-| Device class | Description |
+| Type Suffix | Description |
 | :---- | :---- |
-| `lugs` | Input (upstream) and output (downstream) lugs |
-| `circuit` | Per-circuit data (one child device per commissioned circuit) |
+| `pcs` | UL 3141 Power Control Systems (SPAN PowerUp®) |
 | `bess` | Battery energy storage system |
-| `mid` | Microgrid Interconnect Device (published with each commissioned BESS) |
-| `pv` | Photovoltaic / solar system |
+| `pv` | Photovoltaic/solar system |
 | `evse` | EV charger (SPAN Drive®) |
-
-Lugs and circuit are the panel's native child devices and are always present. The `bess`, `mid`, `pv`, and `evse` child devices appear based on commissioning and are **proxied**: the panel publishes their Homie representation on their behalf, from internal data sources, until the underlying device represents itself on eBus. See the [MQTT API Capabilities](docs/public/mqtt-api-overview.md) and [MQTT Topic Reference](docs/public/mqtt-topic-reference.md) for the full capability and property inventory.
 
 ##### [SPAN Panel Properties](#span-panel-properties)
 
@@ -357,35 +344,27 @@ The currently configured FQDN value can be obtained via the endpoint:
 
 #### [Homie Schema Endpoint](#homie-schema-endpoint)
 
-The `GET /api/v2/homie/schema` endpoint returns a JSON object containing the Homie property schema organized by device class and capability, along with versioning metadata. This provides client developers with a complete reference of all properties published by SPAN API, independent of the commissioning/configuration state of SPAN Panel, and without requiring an MQTT connection.
+The `GET /api/v2/homie/schema` endpoint returns a JSON object containing the Homie property schema organized by node type, along with versioning metadata. This provides client developers with a complete reference of all properties published by SPAN API, independent of the commissioning/configuration state of SPAN Panel, and without requiring an MQTT connection.
 
 ```shell
 $ curl http://span-ab-1234-c5d67.local/api/v2/homie/schema | jq
 {
-  "firmwareVersion": "spanos3/r202633/02",
+  "firmwareVersion": "spanos2/r202546/03",
   "homieDomain": "ebus",
   "homieVersion": 5,
-  "dataModelVersion": "1.0",
-  "deviceClasses": {
-    "distribution-enclosure": {
-      "info": {
-        "serial-number": { "name": "Serial number", "datatype": "string" },
-        "data-model-version": { "name": "eBus data-model version", "datatype": "string" }
-      },
-      "door": {
-        "state": { "name": "Door state", "datatype": "enum", "format": "UNKNOWN,OPEN,CLOSED" }
-      },
+  "types": {
+    "energy.ebus.device.distribution-enclosure.core": {
+      "serial-number": { "name": "Serial number", "datatype": "string" },
+      "door": { "name": "Door state", "datatype": "enum", "format": "UNKNOWN,OPEN,CLOSED" },
       ...
     },
-    "circuit": {
-      "switch": {
-        "relay": { "name": "Circuit relay state", "datatype": "enum", "format": "UNKNOWN,OPEN,CLOSED", "settable": true }
-      },
+    "energy.ebus.device.circuit": {
+      "relay": { "name": "Circuit relay state", "datatype": "enum", "format": "UNKNOWN,OPEN,CLOSED", "settable": true },
       ...
     },
     ...
   },
-  "deviceClassesSchemaHash": "sha256:a1b2c3d4e5f67890"
+  "typesSchemaHash": "sha256:a1b2c3d4e5f67890"
 }
 ```
 
@@ -394,13 +373,12 @@ $ curl http://span-ab-1234-c5d67.local/api/v2/homie/schema | jq
 | `firmwareVersion` | string | SPAN Panel firmware version |
 | `homieDomain` | string | MQTT topic domain prefix (`ebus`) |
 | `homieVersion` | integer | Homie convention version (`5`) |
-| `dataModelVersion` | string | eBus data-model version (`1.0`) |
-| `deviceClasses` | object | Schema organized by device class and capability |
-| `deviceClassesSchemaHash` | string | SHA-256 hash of canonicalized `deviceClasses` object (first 16 hex chars) |
+| `types` | object | Schema organized by node type |
+| `typesSchemaHash` | string | SHA-256 hash of canonicalized `types` object (first 16 hex chars) |
 
-The `deviceClassesSchemaHash` enables clients to detect schema changes across firmware versions without comparing the full `deviceClasses` object. The schema may remain unchanged across multiple firmware releases.
+The `typesSchemaHash` enables clients to detect schema changes across firmware versions without comparing the full `types` object. The schema may remain unchanged across multiple firmware releases.
 
-This schema complements the `$description` attribute published on MQTT, providing the same property metadata in a format organized by device class and capability rather than by device instance.
+This schema complements the `$description` attribute published on MQTT, providing the same property metadata in a format organized by node type rather than by device instance.
 
 #### [SPAN API v2 REST Endpoints Summary](#span-api-v2-rest-endpoints-summary)
 
@@ -411,18 +389,16 @@ All endpoints below are relative to `/api/v2`
 | GET | `/status` | Get SPAN Panel serial number and firmware version | None |
 | GET | `/certificate/ca` | Download CA-certificate | None |
 | POST | `/auth/register` | Register client and obtain access token | `hopPassphrase`* |
-| GET | `/auth/clients` | List registered clients | `accessToken`\*\* |
-| GET | `/auth/clients/{name}` | Get client details | `accessToken`\*\* |
-| DELETE | `/auth/clients/{name}` | Delete a client | `accessToken`\*\* |
-| PUT | `/auth/passphrase` | Regenerate passphrase | `accessToken`\*\* |
+| GET | `/auth/clients` | List registered clients | `accessToken` |
+| GET | `/auth/clients/{name}` | Get client details | `accessToken` |
+| DELETE | `/auth/clients/{name}` | Delete a client | `accessToken` |
+| PUT | `/auth/passphrase` | Regenerate passphrase | `accessToken` |
 | GET | `/dns/fqdn` | Get FQDN configuration | `accessToken` |
 | POST | `/dns/fqdn` | Set FQDN configuration | `accessToken` |
-| DELETE | `/dns/fqdn` | Delete FQDN configuration | `accessToken`\*\* |
+| DELETE | `/dns/fqdn` | Delete FQDN configuration | `accessToken` |
 | GET | `/homie/schema` | Get Homie property schema with versioning metadata | None |
 
 \* Requires `hopPassphrase` in request body, or proof-of-proximity (door switch pressed 3 times)
-
-\*\* Not every `accessToken` carries the same privileges. Registering with the correct `hopPassphrase` yields a full-privilege token; registering by proof-of-proximity alone, or by one-time password, yields a reduced-privilege token, and the endpoints marked here return `403 Forbidden` for it. There is no endpoint a reduced-privilege client can call to discover its own privilege level, so a `403` on one of these is the signal. The `auth/register` response includes the `hopPassphrase`, so a client that registered by proof-of-proximity can obtain a full-privilege token by registering a second time with that passphrase, under a client `name` that is not already registered. The `span-curl /api/v2/auth/clients` example below requires a full-privilege token.
 
 The [span-curl](https://github.com/spanio/SPAN-API-Client-Docs/blob/main/scripts/span-curl) script simplifies authenticated REST API calls:
 
@@ -444,32 +420,30 @@ The MQTT/Homie interface is a significant improvement for obtaining and maintain
 
 The following v1 endpoints provided SPAN Panel state and control via REST. **This functionality is now available through the MQTT/Homie interface.** These endpoints will be removed on the [sunset date](#sunset-date) (December 31, 2026).
 
-Homie/eBus topics below are full device topics under `ebus/5/`. `<serial>` is the panel serial; the lugs, circuits, and DERs are separate child devices with their own device IDs.
+All Homie/eBus topics below are relative to `ebus/5/<serial>/`
 
 | Method | Endpoint | Operation | Homie/eBus Topic |
 | --- | --- | --- | --- |
-| GET | `/api/v1/status` | Subscribe | `<serial>/$state` (see note) |
-| GET | `/api/v1/panel` | Subscribe | `<serial>/#` |
-| GET | `/api/v1/panel/grid` | Subscribe | `<serial>/status/relay` |
-| POST | `/api/v1/panel/grid` | N/A | *(no MQTT equivalent)* |
-| GET | `/api/v1/panel/power` | Subscribe | `<serial>/power-flows/#` |
-| GET | `/api/v1/panel/meter` | Subscribe | `<serial>-lugs-up/#`, `<serial>-lugs-dn/#` |
+| GET | `/api/v1/status` | Subscribe | `$state` (see note) |
+| GET | `/api/v1/panel` | Subscribe | `core/#` |
+| GET | `/api/v1/panel/grid` | Subscribe | `core/relay` |
+| POST | `/api/v1/panel/grid` | — | *(no MQTT equivalent)* |
+| GET | `/api/v1/panel/power` | Subscribe | `core/*` power properties |
+| GET | `/api/v1/panel/meter` | Subscribe | `lugs-*/#` |
 | GET | `/api/v1/circuits` | Subscribe | `<circuit-id>/#` |
 | GET | `/api/v1/circuits/{id}` | Subscribe | `<circuit-id>/#` |
-| POST | `/api/v1/circuits/{id}` | Publish | `<circuit-id>/switch/relay/set` |
-| GET | `/api/v1/storage/soe` | Subscribe | `<bess-id>/soc/soe` |
-| POST | `/api/v1/storage/soe` | N/A | *(no MQTT equivalent)* |
-| GET | `/api/v1/storage/nice-to-have-thresh` | N/A | *(no MQTT equivalent)* |
-| POST | `/api/v1/storage/nice-to-have-thresh` | N/A | *(no MQTT equivalent)* |
-| GET | `/api/v1/islanding-state` | Subscribe | `<bess-id>-mid/grid/islanding-state` |
-| POST | `/api/v1/panel/emergency-reconnect` | N/A | *(no MQTT equivalent)* |
-| GET | `/api/v1/wifi/status` (not implemented: always returns `501 Not Implemented`, and is omitted from the OpenAPI document) | Subscribe | `<serial>/status/wifi`, `<serial>/status/wifi-ssid` |
-| GET | `/api/v1/wifi/scan` | N/A | *(no MQTT equivalent)* |
-| POST | `/api/v1/wifi/connect` | N/A | *(no MQTT equivalent)* |
+| POST | `/api/v1/circuits/{id}` | Publish | `<circuit-id>/*/set` |
+| GET | `/api/v1/storage/soe` | Subscribe | `bess/soe` |
+| POST | `/api/v1/storage/soe` | — | *(no MQTT equivalent)* |
+| GET | `/api/v1/storage/nice-to-have-thresh` | — | *(no MQTT equivalent)* |
+| POST | `/api/v1/storage/nice-to-have-thresh` | — | *(no MQTT equivalent)* |
+| GET | `/api/v1/islanding-state` | Subscribe | `bess/grid-state` |
+| POST | `/api/v1/panel/emergency-reconnect` | — | *(no MQTT equivalent)* |
+| GET | `/api/v1/wifi/status` | Subscribe | `core/wifi`, `wifi-ssid` |
+| GET | `/api/v1/wifi/scan` | — | *(no MQTT equivalent)* |
+| POST | `/api/v1/wifi/connect` | — | *(no MQTT equivalent)* |
 
-**Note on `/api/v1/status`:** The v1 status endpoint returns a large object with many fields. The v2 status endpoint (`GET /api/v2/status`) is not a direct replacement: it returns only `serialNumber`, `firmwareVersion`, and `proximityProven`. For real-time SPAN Panel state, subscribe to MQTT topics.
-
-`proximityProven` reports whether the proof-of-proximity window is currently open (the door switch having been pressed 3 times). Because `GET /api/v2/status` requires no authentication, this is the only way a client that is not yet registered can tell that it may register without supplying a `hopPassphrase`.
+**Note on `/api/v1/status`:** The v1 status endpoint returns a large object with many fields. The v2 status endpoint (`GET /api/v2/status`) is not a direct replacement—it returns only `serialNumber` and `firmwareVersion` for basic identification. For real-time SPAN Panel state, subscribe to MQTT topics.
 
 ##### [Deprecation HTTP Headers](#deprecation-http-headers)
 
@@ -479,8 +453,7 @@ All `/api/v1/*` endpoints return HTTP headers indicating their deprecation statu
 | --- | --- | --- |
 | `Deprecation` | `true` | Endpoint is deprecated |
 | `Sunset` | `2026-12-31` | Date when v1 endpoints will be removed |
-
-SPAN Panel does not currently emit a `Link: rel="successor-version"` header on any v1 endpoint, so do not rely on one to discover a replacement. That header is reserved for a v1-only endpoint whose successor lives at a different v2 path, and no such endpoint exists: every v1 endpoint with a v2 counterpart is dual-version (the same operation is served on both paths), while the remaining v1-only endpoints are replaced by the MQTT/Homie interface rather than by a v2 REST path. Use the mapping table above to find a replacement.
+| `Link` | `</api/v2/...>; rel="successor-version"` | v2 replacement (for dual-version endpoints) |
 
 Example response from a v1-only endpoint:
 
@@ -492,7 +465,7 @@ Deprecation: true
 Sunset: 2026-12-31
 ```
 
-Example response from a dual-version endpoint (v1 path). The headers are the same; the v2 path (`GET /api/v2/auth/clients`) serves the same operation and returns no deprecation headers:
+Example response from a dual-version endpoint (v1 path):
 
 ```http
 GET /api/v1/auth/clients HTTP/1.1
@@ -500,6 +473,7 @@ GET /api/v1/auth/clients HTTP/1.1
 HTTP/1.1 200 OK
 Deprecation: true
 Sunset: 2026-12-31
+Link: </api/v2/auth/clients>; rel="successor-version"
 ```
 
 ##### [Sunset Date](#sunset-date)
@@ -537,7 +511,7 @@ To recap:
 
 Therefore a SPAN API client must possess the `hopPassphrase` in order to authenticate; two methods of obtaining this credential are provided:
 
-1. Proof-of-proximity: When the SPAN Panel door switch is depressed three times in rapid succession, proximity is proven for approximately 15 minutes. During that interval a request to [auth/register](#authentication-endpoint) may omit the `hopPassphrase` from the request body, and the response received will contain the `hopPassphrase`, `ebusBrokerPassword`, and the `accessToken`. **The proof is single-use.** The first `auth/register` request that relies on it consumes it, whether or not that request succeeds, so a request that then fails for an unrelated reason (a client `name` that is already registered, for example) wastes the proof and requires pressing the door switch again. Choose a client `name` that is not already registered. Note that a token obtained this way is reduced-privilege (see the endpoint table above). `GET /api/v2/status` reports whether the window is currently open, via `proximityProven`, without consuming the proof. Note: opening the panel door counts as the first press (the door switch is a magnetic reed switch), so from a closed door only 2 additional presses are needed. The breaker-space LED strip flashes approximately twice to confirm proximity is proven.
+1. Proof-of-proximity: When the SPAN Panel door switch is depressed three times in rapid succession, authentication of the `auth/register` endpoint is disabled for approximately 15 minutes. During this interval, requests to [auth/register](#authentication-endpoint) will bypass the check of the `hopPassphrase` in the request body, and the response received will contain the `hopPassphrase`, `ebusBrokerPassword`, and the `accessToken`. Note: opening the panel door counts as the first press (the door switch is a magnetic reed switch), so from a closed door only 2 additional presses are needed. The breaker-space LED strip flashes approximately twice to confirm proximity is proven.
 2. [SPAN Home mobile app](https://www.span.io/app) users can navigate to a page that provides the `hopPassphrase`of SPAN Panel.
 
 The [`span-auth`](https://github.com/spanio/SPAN-API-Client-Docs/blob/main/scripts/span-auth) script manages authentication credentials:
@@ -604,24 +578,14 @@ $ span-mqtt-sub -C 1 -t '@s/$description' | jq
   "version": 1766683742148,
   "type": "energy.ebus.device.distribution-enclosure",
   "name": "SPAN Panel eBus Adapter",
-  "children": [
-    "ab-1234-c5d67-lugs-up",
-    "ab-1234-c5d67-lugs-dn",
-    "ac3dccda46a94b98878a227df6fed588"
-  ],
   "nodes": {
-    "info": {
-      "name": "info",
-      "type": "energy.ebus.capability.info",
+    "core": {
+      "name": "Distribution Enclosure Core",
+      "type": "energy.ebus.device.distribution-enclosure.core",
       "properties": {
         "vendor-name": {
           "name": "Vendor name",
           "datatype": "string"
-        },
-        "model": {
-          "name": "Model",
-          "datatype": "enum",
-          "format": "MAIN_16,MLO_24,MAIN_32,MAIN_40,MLO_48"
         },
         "serial-number": {
           "name": "Serial number",
@@ -631,12 +595,8 @@ $ span-mqtt-sub -C 1 -t '@s/$description' | jq
           "name": "Hardware version",
           "datatype": "string"
         },
-        "firmware-version": {
-          "name": "Firmware version",
-          "datatype": "string"
-        },
-        "data-model-version": {
-          "name": "eBus data-model version",
+        "software-version": {
+          "name": "Software version",
           "datatype": "string"
         },
 TRUNCATED FOR BREVITY
@@ -878,11 +838,11 @@ SPAN plans to provide SPAN API on newer SPAN Panel models (MAIN 40, MLO 48, MAIN
 
 ### [Will the existing Home Assistant integration for SPAN be compatible with this new SPAN API?](#will-the-existing-home-assistant-integration-for-span-be-compatible-with-this-new-span-api)
 
-Existing clients of the legacy v1 REST endpoints will continue to work during the deprecation period (until December 31, 2026), but those endpoints are deprecated. To continue working after the sunset date, a client will need to be updated to use the MQTT/Homie interface for real-time panel state and measurements, and v2 REST endpoints for authentication. The MQTT/Homie interface uses the parent/child data model introduced in `r202633`; developers coming from the earlier flat MQTT model should also consult the [SPAN Panel eBus Schema Migration Guide](docs/public/ebus-schema-migration-guide.md). The v1-REST migration path is documented in [Migrating from v1 REST Endpoints](#migrating-from-v1-rest-endpoints).
+The [existing Home Assistant integration for SPAN](https://github.com/SpanPanel/span) uses the v1 REST endpoints, which remain available during the deprecation period (until December 31, 2026). To continue working after the sunset date, the integration will need to be updated to use the MQTT/Homie interface for real-time panel state and measurements, and v2 REST endpoints for authentication. The migration path is documented in [Migrating from v1 REST Endpoints](#migrating-from-v1-rest-endpoints).
 
 ### [Does SPAN API work with SPAN Drive?](#does-span-api-work-with-span-drive)
 
-Yes. SPAN Drive connects directly to SPAN Panel through a SPAN-specific connection (using a non-Internet Protocol transport) and is not independently network-accessible. When a SPAN Drive is paired with SPAN Panel, SPAN API publishes SPAN Drive status, state, and metadata through a Homie child device with type `energy.ebus.device.evse`. This enables integrations to monitor charging state, energy usage, and other SPAN Drive properties through SPAN API.
+Yes. SPAN Drive connects directly to SPAN Panel through a SPAN-specific connection (using a non-Internet Protocol transport) and is not independently network-accessible. When a SPAN Drive is paired with SPAN Panel, SPAN API publishes SPAN Drive status, state, and metadata through the Homie node with type `energy.ebus.device.evse`. This enables integrations to monitor charging state, energy usage, and other SPAN Drive properties through SPAN API.
 
 ### [Why is this a beta? When will it be final?](#why-is-this-a-beta-when-will-it-be-final)
 
@@ -908,7 +868,7 @@ Suggestions and corrections will be reviewed and, if accepted, implemented by SP
 
 ## [Appendix A: SPAN Panel Network Interfaces](#appendix-a-span-panel-network-interfaces)
 
-SPAN Panel provides both client and hosted network interfaces, both hardwired Ethernet and Wi-Fi. See [SPAN Panel Network Architecture](docs/public/span-panel-network-architecture.md) for a detailed description of the network topology, NAT behavior, and hosted interface configuration.
+SPAN Panel provides both client and hosted network interfaces, both hardwired Ethernet and Wi-Fi. See [SPAN Panel Network Architecture](../../../docs/public/span-panel-network-architecture.md) for a detailed description of the network topology, NAT behavior, and hosted interface configuration.
 
 ### [SPAN Panel Client Network Interfaces](#span-panel-client-network-interfaces)
 
@@ -938,7 +898,7 @@ The hosted Wi-Fi AP is powered by SPAN Panel directly, consequently might be the
 ### [SPAN Panel & SPAN API Networking Recommended Best Practices](#span-panel--span-api-networking-recommended-best-practices)
 
 - The SPAN Panel connection to the home’s LAN **SHOULD** be via hardwired Ethernet, using the `eth0` interface.
-- Only **one** client interface (`eth0` or `wlan0`) **SHOULD** be connected to the home LAN at a time. If both must be active, they **MUST** be on different subnets. Having both on the same subnet causes mDNS hostname collisions (see [network architecture documentation](docs/public/span-panel-network-architecture.md) for details). Starting with firmware r202615, the panel automatically mitigates this by suppressing mDNS on `wlan0` when a shared subnet is detected.
+- Only **one** client interface (`eth0` or `wlan0`) **SHOULD** be connected to the home LAN at a time. If both must be active, they **MUST** be on different subnets. Having both on the same subnet causes mDNS hostname collisions (see [network architecture documentation](../../../docs/public/span-panel-network-architecture.md) for details). Starting with firmware r202615, the panel automatically mitigates this by suppressing mDNS on `wlan0` when a shared subnet is detected.
 - The home LAN **MUST NOT** use the `10.42.0.0/24` or `10.42.1.0/24` subnet ranges. These are used internally by SPAN Panel’s hosted interfaces (`wlan0_ap` and `eth1` respectively). A client interface assigned an IP in these ranges will conflict with the panel’s hosted networks.
 - The home’s LAN infrastructure (e.g. Ethernet switch) **SHOULD** maintain (backup) power during grid-outages, or other power interruptions.
 - Home energy infrastructure hosts (e.g. BESS, PV systems) **SHOULD** connect to the home LAN via hardwired Ethernet.
