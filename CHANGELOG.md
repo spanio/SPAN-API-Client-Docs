@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 SPAN API versions are tied to SPAN Panel firmware releases using the format `rYYYYWW`.
 
+## Release 202639
+
+### Added
+
+- REST: `GET /api/v2/status` adds a required `hardwareVersion` field (string): the panel's hardware version (`1.2` or `2.0`). It is `UNKNOWN` when the panel cannot determine its hardware version.
+
+### Changed
+
+- **Homie/MQTT (BREAKING): The BESS `meter/active-power` sign is reversed.** It is now positive while the battery discharges and negative while it charges, matching the eBus specification, and is now the negative of the panel's `power-flows/battery` property, whose sign stays the same. Integrations will see a sign discontinuity at the upgrade. See [Power and Energy Sign Conventions](docs/public/power-and-energy-conventions.md).
+- Homie/MQTT: Every commissioned solar / PV inverter is now published as its own `pv` child device, and the circuit feeding each in-panel inverter names that inverter in `connection/feeds-device-id`. Previously only one inverter was published as a `pv` device, and only its feeding circuit carried `connection/feeds-device-*`. A panel with one inverter keeps its existing device ID. On a panel with more than one, every `pv` device ID changes, including the one published before.
+- Homie/MQTT: The circuits the panel adds for a commissioned solar / PV system or battery system (named `Commissioned PV System` and `Commissioned Backup System`) can no longer be switched or reprioritized: `switch/relay-controllable` is `false`, `switch/relay` and `load-shed/priority` are not settable, and `load-shed/priority` is always `NEVER` instead of following the circuit's backup priority.
+- Homie/MQTT: A retained property value is no longer republished when its published payload is identical to the last one sent. For example, a reading that changes but rounds to the same published value is no longer sent again. The complete device tree is still republished whenever the panel reconnects to the broker.
+- Homie/MQTT: The SPAN Drive `config/user-max-charge-current` now has a value only when a user has set one. When none is set, the panel publishes no value for it and `config/max-charge-current` is the effective ceiling. Earlier releases set `user-max-charge-current` to the commissioned maximum on their own. After the upgrade, once a SPAN Drive's commissioned maximum has stayed the same for two minutes, a stored value equal to that maximum is cleared and any other value is kept. A value published before the upgrade can remain as a retained message on the topic after it is cleared, so treat an absent value and a value equal to `config/max-charge-current` the same way.
+- REST: In the `POST /api/v2/auth/register` response, `hopPassphrase` and `ebusBrokerPassword` are no longer required and are `null` when the panel passphrase is unavailable. A successful registration now always returns the access token; previously, registration failed when the passphrase could not be read.
+- REST: `POST /api/v2/auth/register` error responses:
+  - A panel passphrase that is not available returns 422 `Dashboard password is not available`.
+  - On a panel whose serial number is not yet available, registration returns 503 `Serial number is not available yet`.
+- REST: The OpenAPI document now declares the error bodies the panel sends. Every 422 response is `ErrorOut` (a string `detail`) instead of a `detail` array, `POST /api/v2/auth/register` also declares its 503 as `ErrorOut`, and the 429 from `GET /api/v2/certificate/ca` is `RateLimitOut` (an `error` string).
+
+### Fixed
+
+- Homie/MQTT: Circuit and downstream lugs values keep updating when the panel cannot read circuit backup priorities. Previously they stopped updating until the priorities could be read again.
+- Homie/MQTT: On panels with an Enphase battery system and a SPAN Remote Meter, the MID's `grid/islanding-state` and `grid/grid-forming-entity` are now published. Previously they had no value.
+- TLS: The panel's server certificate now always includes the panel's hosted-network addresses `10.42.0.1` (Wi-Fi access point) and `10.42.1.1` (direct Ethernet connection). Previously it included each one only if that interface had an address when the certificate was created, so a client connected to a hosted network could get a name mismatch. The panel also no longer regenerates the server certificate, restarting the MQTT broker and the HTTPS server, at every start while either hosted interface has no address. Clients keep the existing CA certificate.
+
 ## Release 202633
 
 ### Changed

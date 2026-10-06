@@ -10,7 +10,7 @@ get_auth_file_path() {
     echo "${SPAN_AUTH_FILE:-$SPAN_AUTH_FILE_DEFAULT}"
 }
 
-# Check if file has secure permissions
+# Warn if the file is accessible by group or others (mode & 077)
 check_file_permissions() {
     local path="$1"
     if [[ ! -f "$path" ]]; then
@@ -18,26 +18,30 @@ check_file_permissions() {
     fi
 
     local perms
-    if [[ "$OSTYPE" == linux-gnu* ]]; then
-        perms=$(stat -c "%a" "$path" 2>/dev/null)
-    elif [[ "$OSTYPE" == darwin* || "$OSTYPE" == *bsd* ]]; then
-        perms=$(stat -f "%Lp" "$path" 2>/dev/null)
-    else
-        echo "Warning: unknown OS type '$OSTYPE'; skipping permission check on $path" >&2
+    perms=$(stat -c "%a" "$path" 2>/dev/null) || perms=$(stat -f "%Lp" "$path" 2>/dev/null) || perms=""
+    if [[ ! "$perms" =~ ^[0-7]+$ ]]; then
+        echo "Warning: could not read permissions of $path; skipping permission check" >&2
         return 0
     fi
 
-    if [[ "$perms" != "600" ]]; then
+    if (( 8#$perms & 8#077 )); then
         echo "Warning: $path has insecure permissions ($perms). Run 'chmod 600 $path' to fix." >&2
         return 1
     fi
     return 0
 }
 
-# Load a value from the auth file using jq
+# Lowercase a panel serial number
+normalize_serial() {
+    printf '%s\n' "$1" | tr '[:upper:]' '[:lower:]'
+}
+
+# Load a value from the auth file using jq; extra arguments go to jq
 # Usage: load_auth_value ".default_panel"
+#        load_auth_value '.panels[$s]' --arg s "$serial"
 load_auth_value() {
     local jq_path="$1"
+    shift
     local auth_file
     auth_file=$(get_auth_file_path)
 
@@ -47,7 +51,7 @@ load_auth_value() {
     fi
 
     check_file_permissions "$auth_file"
-    jq -r "$jq_path // empty" "$auth_file"
+    jq -r "$@" "$jq_path // empty" "$auth_file"
 }
 
 # Get the default panel serial number
@@ -56,7 +60,7 @@ get_default_panel() {
     default=$(load_auth_value ".default_panel")
 
     if [[ -n "$default" ]]; then
-        echo "$default"
+        normalize_serial "$default"
         return 0
     fi
 
@@ -65,28 +69,44 @@ get_default_panel() {
     panel_count=$(load_auth_value ".panels | keys | length")
 
     if [[ "$panel_count" == "1" ]]; then
-        load_auth_value ".panels | keys[0]"
+        normalize_serial "$(load_auth_value ".panels | keys[0]")"
         return 0
     fi
 
     return 1
 }
 
-# Get panel credentials
-# Usage: get_panel_hostname "serial-number"
+# Get a field of a panel's credentials, matching the serial case-insensitively
+# Usage: get_panel_field "serial-number" "hostname"
+get_panel_field() {
+    load_auth_value \
+        '[.panels // {} | to_entries[] | select(.key | ascii_downcase == ($s | ascii_downcase)) | .value[$f]][0]' \
+        --arg s "$1" --arg f "$2"
+}
+
 get_panel_hostname() {
-    local serial="$1"
-    load_auth_value ".panels[\"$serial\"].hostname"
+    get_panel_field "$1" hostname
 }
 
 get_panel_password() {
-    local serial="$1"
-    load_auth_value ".panels[\"$serial\"].ebus_broker_password"
+    get_panel_field "$1" ebus_broker_password
 }
 
 get_panel_access_token() {
+    get_panel_field "$1" access_token
+}
+
+# Explain an HTTP 403 and how to obtain a full-privilege token
+print_reduced_privilege_hint() {
     local serial="$1"
-    load_auth_value ".panels[\"$serial\"].access_token"
+    local remedy
+    if [[ -n "$(get_panel_field "$serial" hop_passphrase)" ]]; then
+        remedy="'span-auth refresh $serial' (uses the stored hopPassphrase) or 'span-auth setup --full $serial'"
+    else
+        remedy="'span-auth setup --full $serial' or 'span-auth setup -p PASSPHRASE $serial'"
+    fi
+    echo "Hint: if the token for $serial is reduced-privilege (registered by proof of proximity)," >&2
+    echo "registering with the hopPassphrase gives a full-privilege token: $remedy" >&2
 }
 
 # Resolve panel serial number (use provided or get default)
@@ -94,7 +114,7 @@ resolve_panel_serial() {
     local provided="$1"
 
     if [[ -n "$provided" ]]; then
-        echo "$provided"
+        normalize_serial "$provided"
         return 0
     fi
 
@@ -126,6 +146,27 @@ is_cert_expired() {
     fi
 }
 
+# Download a panel's CA certificate to dest, replacing dest only with a PEM certificate
+# Usage: download_ca_cert "hostname" "dest"
+download_ca_cert() {
+    local hostname="$1"
+    local dest="$2"
+    local tmp
+    tmp=$(mktemp "$(dirname "$dest")/.$(basename "$dest").XXXXXX") || return 1
+
+    if ! curl -sf --connect-timeout 5 --max-time 15 "http://${hostname}/api/v2/certificate/ca" -o "$tmp"; then
+        rm -f "$tmp"
+        echo "Error: could not download the CA certificate from ${hostname}" >&2
+        return 1
+    fi
+    if ! grep -q -e '-----BEGIN CERTIFICATE-----' "$tmp"; then
+        rm -f "$tmp"
+        echo "Error: response from ${hostname} is not a PEM certificate" >&2
+        return 1
+    fi
+    chmod 644 "$tmp" && mv -f "$tmp" "$dest" || { rm -f "$tmp"; return 1; }
+}
+
 # Get or download CA certificate
 ensure_ca_cert() {
     local serial="$1"
@@ -139,20 +180,13 @@ ensure_ca_cert() {
             return 0
         fi
         echo "CA certificate for $serial is expired, re-downloading..." >&2
-        rm -f "$cert_path"
     fi
 
     # Create directory if needed
     mkdir -p "$SPAN_CA_CERT_DIR"
 
-    # Download certificate
     echo "Downloading CA certificate for $serial..." >&2
-    if curl -sf "http://${hostname}/api/v2/certificate/ca" -o "$cert_path"; then
-        echo "Certificate saved to $cert_path" >&2
-        echo "$cert_path"
-        return 0
-    else
-        echo "Error: Failed to download CA certificate from $hostname" >&2
-        return 1
-    fi
+    download_ca_cert "$hostname" "$cert_path" || return 1
+    echo "Certificate saved to $cert_path" >&2
+    echo "$cert_path"
 }

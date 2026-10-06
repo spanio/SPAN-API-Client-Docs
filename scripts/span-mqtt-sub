@@ -51,7 +51,7 @@ usage() {
     echo "Examples:"
     echo "  # Using credential file (after running 'span-auth setup')"
     echo "  $script_name -t '@s/\$state' -v"
-    echo "  $script_name -u ab-1234-c5d67 -t '@s/core/#' -v"
+    echo "  $script_name -u ab-1234-c5d67 -t '@s/meter/#' -v"
     echo
     echo "  # Explicit credentials (backward compatible)"
     echo "  $script_name -u ABC123 -P mypass --cafile /tmp/span.crt -t '@s/\$state' -v"
@@ -66,7 +66,7 @@ passthrough_args=()
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -u)
-            serial_number="$2"
+            serial_number=$(printf '%s\n' "$2" | tr '[:upper:]' '[:lower:]')
             shift 2
             ;;
         -P)
@@ -87,14 +87,35 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Download the CA certificate to $2, keeping it only if it is a PEM certificate
+download_cert() {
+    local tmp
+    tmp=$(mktemp "$(dirname "$2")/.$(basename "$2").XXXXXX") || return 1
+    if ! curl -sf --connect-timeout 5 --max-time 15 "http://$1/api/v2/certificate/ca" -o "$tmp"; then
+        rm -f "$tmp"
+        echo "Error: could not download the CA certificate from $1" >&2
+        return 1
+    fi
+    if ! grep -q -e '-----BEGIN CERTIFICATE-----' "$tmp"; then
+        rm -f "$tmp"
+        echo "Error: response from $1 is not a PEM certificate" >&2
+        return 1
+    fi
+    chmod 644 "$tmp" && mv -f "$tmp" "$2" || { rm -f "$tmp"; return 1; }
+}
+
 # If all credentials provided explicitly, use them (backward compatible mode)
+broker_username=""
+broker_host=""
+broker_port=""
+
 if [[ -n "$serial_number" && -n "$password" && -n "$cert_file" ]]; then
     hostname="span-${serial_number}.local"
 
     # Download cert if not exists
     if [[ ! -f "$cert_file" ]]; then
         echo "Certificate file not found, downloading from ${hostname}..." >&2
-        curl -sf "http://${hostname}/api/v2/certificate/ca" -o "$cert_file"
+        download_cert "$hostname" "$cert_file" || exit 1
         echo "Certificate saved to ${cert_file}" >&2
     fi
 else
@@ -121,6 +142,11 @@ else
         hostname="span-${serial_number}.local"
     fi
 
+    # Broker settings saved from the registration response; older credential files lack them
+    broker_username=$(get_panel_field "$serial_number" ebus_broker_username)
+    broker_host=$(get_panel_field "$serial_number" ebus_broker_host)
+    broker_port=$(get_panel_field "$serial_number" ebus_broker_mqtts_port)
+
     # Get password from credential file if not provided
     if [[ -z "$password" ]]; then
         password=$(get_panel_password "$serial_number")
@@ -136,7 +162,7 @@ else
         cert_file=$(ensure_ca_cert "$serial_number" "$hostname") || exit 1
     elif [[ ! -f "$cert_file" ]]; then
         echo "Certificate file not found, downloading from ${hostname}..." >&2
-        curl -sf "http://${hostname}/api/v2/certificate/ca" -o "$cert_file"
+        download_cert "$hostname" "$cert_file" || exit 1
         echo "Certificate saved to ${cert_file}" >&2
     fi
 fi
@@ -150,9 +176,9 @@ for arg in "${passthrough_args[@]+"${passthrough_args[@]}"}"; do
 done
 
 exec "$mqtt_cmd" \
-    -h "$hostname" \
-    -p 8883 \
+    -h "${broker_host:-$hostname}" \
+    -p "${broker_port:-8883}" \
     --cafile "$cert_file" \
-    -u "$serial_number" \
+    -u "${broker_username:-$serial_number}" \
     -P "$password" \
     "${expanded_args[@]+"${expanded_args[@]}"}"

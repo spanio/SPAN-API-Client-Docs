@@ -9,12 +9,19 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-import requests
-
 # Add lib directory to path for imports (resolve symlinks)
 script_dir = Path(__file__).resolve().parent
 lib_dir = script_dir.parent / "lib"
 sys.path.insert(0, str(lib_dir))
+
+try:
+    import requests
+except ImportError as e:
+    sys.exit(
+        f"Error: missing Python package '{e.name}' for {sys.executable}\n"
+        f"Install with: {sys.executable} -m pip install -r {script_dir / 'requirements.txt'}\n"
+        f"or run the scripts with a Python that has it: make -C scripts install PYTHON=/path/to/python3"
+    )
 
 from span_auth_utils import (
     get_auth_file_path,
@@ -26,6 +33,7 @@ from span_auth_utils import (
     get_default_panel,
     set_default_panel,
     get_panel_credentials,
+    reduced_privilege_hint,
 )
 
 
@@ -41,14 +49,15 @@ def discover_panels(timeout: float = 3.0) -> list[dict]:
 
     try:
         result = subprocess.run(
-            [str(discover_script), "-j", "-t", str(int(timeout))],
+            [sys.executable, str(discover_script), "-j", "-t", str(int(timeout))],
             capture_output=True,
             text=True,
             timeout=timeout + 30  # Allow extra time for script overhead
         )
 
         if result.returncode != 0:
-            # No panels found or error
+            if result.stderr:
+                print(result.stderr.rstrip(), file=sys.stderr)
             return []
 
         panels = json.loads(result.stdout)
@@ -127,13 +136,17 @@ def wait_for_proximity(hostname: str, serial: str, timeout: float = 900.0) -> bo
         print(f"\r  Waiting for door press on {serial}... ({int(elapsed)}s)", end="", file=sys.stderr)
 
 
-def register_with_panel(hostname: str, passphrase: str | None = None) -> dict | None:
+def register_with_panel(hostname: str, passphrase: str | None = None,
+                        serial: str | None = None, name_suffix: str = "") -> dict | None:
     """
     Register with a SPAN panel and get credentials.
 
     Args:
         hostname: Panel hostname
         passphrase: Optional hopPassphrase (None to try door bypass)
+        serial: Panel serial number (for the HTTP 403 hint)
+        name_suffix: Appended to the client name, so that two registrations
+            within the same second do not collide
 
     Returns:
         Credentials dict on success, None on failure
@@ -145,7 +158,7 @@ def register_with_panel(hostname: str, passphrase: str | None = None) -> dict | 
     # and the proximity proof (door bypass) is single-use — so a name collision
     # would waste the proof and force the user to press the door switch again.
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    payload = {"name": f"span-api-cli-{timestamp}"}
+    payload = {"name": f"span-api-cli-{timestamp}{name_suffix}"}
     if passphrase:
         payload["hopPassphrase"] = passphrase
 
@@ -160,6 +173,9 @@ def register_with_panel(hostname: str, passphrase: str | None = None) -> dict | 
             return None
         elif response.status_code >= 400:
             print(f"Error: HTTP {response.status_code}: {response.text}", file=sys.stderr)
+            if response.status_code == 403 and not passphrase:
+                print(f"Hint: register with the hopPassphrase: "
+                      f"'span-auth setup -p PASSPHRASE {(serial or hostname).lower()}'", file=sys.stderr)
             return None
 
         return response.json()
@@ -178,6 +194,53 @@ def register_with_panel(hostname: str, passphrase: str | None = None) -> dict | 
         return None
 
 
+def save_registration(result: dict, hostname: str, hop_passphrase: str, ebus_broker_password: str,
+                      privilege: str | None, set_as_default: bool = False) -> bool:
+    """Save the credentials from an auth/register response. Returns False if it lacks a required field."""
+    missing = [key for key in ("serialNumber", "accessToken", "iatMs") if result.get(key) is None]
+    if missing:
+        print(f"Error: auth/register response from {hostname} has no {', '.join(missing)}", file=sys.stderr)
+        return False
+    # A response without a password or broker field keeps what is already stored for the panel.
+    existing = load_auth_file()["panels"].get(str(result["serialNumber"]).lower()) or {}
+
+    def pick(response_key: str, stored_key: str, provided=None):
+        for value in (result.get(response_key), provided, existing.get(stored_key)):
+            if value not in (None, ""):
+                return value
+        return None
+
+    add_panel_credentials(
+        serial_number=result.get("serialNumber"),
+        hostname=result.get("hostname") or hostname,
+        hop_passphrase=pick("hopPassphrase", "hop_passphrase", hop_passphrase) or "",
+        ebus_broker_password=pick("ebusBrokerPassword", "ebus_broker_password", ebus_broker_password) or "",
+        access_token=result.get("accessToken"),
+        access_token_issued_at=result.get("iatMs"),
+        set_as_default=set_as_default,
+        privilege=privilege,
+        ebus_broker_username=pick("ebusBrokerUsername", "ebus_broker_username"),
+        ebus_broker_host=pick("ebusBrokerHost", "ebus_broker_host"),
+        ebus_broker_mqtts_port=pick("ebusBrokerMqttsPort", "ebus_broker_mqtts_port"),
+    )
+    return True
+
+
+def upgrade_to_full(hostname: str, serial: str, result: dict) -> dict | None:
+    """Register again with the hopPassphrase from a proof-of-proximity registration."""
+    hop_passphrase = result.get("hopPassphrase")
+    if not hop_passphrase:
+        print("  Warning: the registration response has no hopPassphrase; keeping the reduced-privilege token.",
+              file=sys.stderr)
+        return None
+    print("  Registering again with the hopPassphrase for a full-privilege token...", file=sys.stderr)
+    full = register_with_panel(hostname, hop_passphrase, serial=serial, name_suffix="-full")
+    if full is None:
+        print("  Warning: full-privilege registration failed; keeping the reduced-privilege token.",
+              file=sys.stderr)
+    return full
+
+
 def cmd_setup(args):
     """Setup credentials for panels."""
     # Determine which panels to set up
@@ -193,7 +256,7 @@ def cmd_setup(args):
 
     success_count = 0
     for panel in panels:
-        serial = panel["serial_number"]
+        serial = panel["serial_number"].lower()
         hostname = panel["hostname"]
 
         print(f"\nSetting up {serial} ({hostname})...", file=sys.stderr)
@@ -210,11 +273,11 @@ def cmd_setup(args):
         result = None
 
         if passphrase:
-            result = register_with_panel(hostname, passphrase)
+            result = register_with_panel(hostname, passphrase, serial=serial)
         else:
             # Try door bypass first
             print("  Trying door bypass...", file=sys.stderr)
-            result = register_with_panel(hostname, None)
+            result = register_with_panel(hostname, None, serial=serial)
 
             if result is None:
                 # Door bypass not active, prompt for passphrase
@@ -224,24 +287,22 @@ def cmd_setup(args):
                         f"  Enter hopPassphrase for {serial} (or press door switch 3x and retry): "
                     )
                     if passphrase:
-                        result = register_with_panel(hostname, passphrase)
+                        result = register_with_panel(hostname, passphrase, serial=serial)
                 except KeyboardInterrupt:
                     print("\n  Skipped.", file=sys.stderr)
                     continue
 
         if result:
-            # Save credentials
-            add_panel_credentials(
-                serial_number=result["serialNumber"],
-                hostname=result["hostname"],
-                hop_passphrase=result.get("hopPassphrase", passphrase or ""),
-                ebus_broker_password=result["ebusBrokerPassword"],
-                access_token=result["accessToken"],
-                access_token_issued_at=result["iatMs"],
-                set_as_default=(len(panels) == 1)
-            )
-            print(f"  ✓ Credentials saved for {serial}", file=sys.stderr)
-            success_count += 1
+            privilege = "full" if passphrase else "reduced"
+            if privilege == "reduced" and args.full:
+                full = upgrade_to_full(hostname, serial, result)
+                if full:
+                    passphrase = result.get("hopPassphrase")
+                    result, privilege = full, "full"
+            if save_registration(result, hostname, passphrase or "", "", privilege,
+                                 set_as_default=(len(panels) == 1)):
+                print(f"  ✓ Credentials saved for {serial} ({privilege} privilege)", file=sys.stderr)
+                success_count += 1
         else:
             print(f"  ✗ Failed to register with {serial}", file=sys.stderr)
 
@@ -253,7 +314,7 @@ def cmd_setup(args):
         sys.exit(1)
 
 
-def regenerate_passphrase(hostname: str, access_token: str) -> dict | None:
+def regenerate_passphrase(hostname: str, access_token: str, serial: str, has_passphrase: bool) -> dict | None:
     """
     Regenerate the hopPassphrase for a panel.
 
@@ -278,6 +339,8 @@ def regenerate_passphrase(hostname: str, access_token: str) -> dict | None:
             return None
         elif response.status_code >= 400:
             print(f"Error: HTTP {response.status_code}: {response.text}", file=sys.stderr)
+            if response.status_code == 403:
+                print(reduced_privilege_hint(serial, has_passphrase), file=sys.stderr)
             return None
 
         return response.json()
@@ -313,7 +376,7 @@ def cmd_regenerate(args):
         print(f"Error: Panel '{serial}' not found in credential file.", file=sys.stderr)
         sys.exit(1)
 
-    hostname = creds["hostname"]
+    hostname = creds.get("hostname") or f"span-{serial}.local"
     access_token = creds.get("access_token")
 
     if not access_token:
@@ -329,16 +392,14 @@ def cmd_regenerate(args):
             print("Cancelled.", file=sys.stderr)
             sys.exit(0)
 
-    result = regenerate_passphrase(hostname, access_token)
+    result = regenerate_passphrase(hostname, access_token, serial, bool(creds.get("hop_passphrase")))
     if result:
-        add_panel_credentials(
-            serial_number=result["serialNumber"],
-            hostname=result["hostname"],
-            hop_passphrase=result.get("hopPassphrase", ""),
-            ebus_broker_password=result["ebusBrokerPassword"],
-            access_token=result["accessToken"],
-            access_token_issued_at=result["iatMs"]
-        )
+        # The auth/passphrase response carries only the two password fields; keep the rest of the record.
+        data = load_auth_file()
+        entry = data["panels"][serial]
+        entry["hop_passphrase"] = result.get("hopPassphrase") or entry.get("hop_passphrase", "")
+        entry["ebus_broker_password"] = result.get("ebusBrokerPassword") or entry.get("ebus_broker_password", "")
+        save_auth_file(data)
         print(f"✓ Passphrase regenerated for {serial}", file=sys.stderr)
         print(f"  New passphrase: {result.get('hopPassphrase', 'N/A')}", file=sys.stderr)
         print(f"  Credentials updated in: {get_auth_file_path()}", file=sys.stderr)
@@ -368,22 +429,16 @@ def cmd_refresh(args):
             print(f"Error: Panel '{serial}' not found in credential file.", file=sys.stderr)
             continue
 
-        hostname = creds["hostname"]
+        hostname = creds.get("hostname") or f"span-{serial}.local"
         passphrase = creds.get("hop_passphrase")
 
         print(f"Refreshing token for {serial}...", file=sys.stderr)
 
-        result = register_with_panel(hostname, passphrase)
+        result = register_with_panel(hostname, passphrase, serial=serial)
         if result:
-            add_panel_credentials(
-                serial_number=result["serialNumber"],
-                hostname=result["hostname"],
-                hop_passphrase=result.get("hopPassphrase", passphrase or ""),
-                ebus_broker_password=result["ebusBrokerPassword"],
-                access_token=result["accessToken"],
-                access_token_issued_at=result["iatMs"]
-            )
-            print(f"  ✓ Token refreshed for {serial}", file=sys.stderr)
+            privilege = "full" if passphrase else "reduced"
+            if save_registration(result, hostname, passphrase or "", creds.get("ebus_broker_password", ""), privilege):
+                print(f"  ✓ Token refreshed for {serial} ({privilege} privilege)", file=sys.stderr)
         else:
             print(f"  ✗ Failed to refresh token for {serial}", file=sys.stderr)
 
@@ -408,6 +463,7 @@ def cmd_list(args):
 
         print(f"  {marker} {panel['serial_number']}{default_label}")
         print(f"    Hostname: {panel['hostname']}")
+        print(f"    Privilege: {panel['privilege']}")
 
         if panel["access_token_issued_at"]:
             issued = datetime.fromtimestamp(panel["access_token_issued_at"] / 1000)
@@ -458,6 +514,7 @@ Examples:
   span-auth setup                    # Discover and setup all panels
   span-auth setup ab-1234-c5d67      # Setup specific panel
   span-auth setup -p PASSPHRASE      # Setup with passphrase
+  span-auth setup --wait --full      # Door press, then a full-privilege token
   span-auth setup --wait             # Wait for door press, then register
   span-auth setup -w ab-1234-c5d67   # Wait for door press on specific panel
   span-auth refresh                  # Refresh token for default panel
@@ -474,24 +531,27 @@ Examples:
 
     # setup command
     setup_parser = subparsers.add_parser("setup", help="Register with panels and save credentials")
-    setup_parser.add_argument("serial", nargs="?", help="Panel serial number (discovers if not provided)")
+    setup_parser.add_argument("serial", nargs="?", type=str.lower, help="Panel serial number (discovers if not provided)")
     setup_parser.add_argument("-p", "--passphrase", help="hopPassphrase for authentication")
     setup_parser.add_argument("-t", "--timeout", type=float, default=3.0, help="Discovery timeout (default: 3.0)")
     setup_parser.add_argument("-w", "--wait", action="store_true",
                               help="Wait for door switch proximity proof before registering")
     setup_parser.add_argument("--wait-timeout", type=float, default=900.0,
                               help="Proximity wait timeout in seconds (default: 900 = 15 min)")
+    setup_parser.add_argument("--full", action="store_true",
+                              help="After a proof-of-proximity registration, register again with the "
+                                   "returned hopPassphrase to save a full-privilege token")
     setup_parser.set_defaults(func=cmd_setup)
 
     # refresh command
     refresh_parser = subparsers.add_parser("refresh", help="Refresh access tokens")
-    refresh_parser.add_argument("serial", nargs="?", help="Panel serial number (uses default if not provided)")
+    refresh_parser.add_argument("serial", nargs="?", type=str.lower, help="Panel serial number (uses default if not provided)")
     refresh_parser.add_argument("--all", action="store_true", help="Refresh all panels")
     refresh_parser.set_defaults(func=cmd_refresh)
 
     # regenerate command
     regenerate_parser = subparsers.add_parser("regenerate", help="Regenerate the hopPassphrase")
-    regenerate_parser.add_argument("serial", nargs="?", help="Panel serial number (uses default if not provided)")
+    regenerate_parser.add_argument("serial", nargs="?", type=str.lower, help="Panel serial number (uses default if not provided)")
     regenerate_parser.add_argument("-y", "--yes", action="store_true", help="Skip confirmation prompt")
     regenerate_parser.set_defaults(func=cmd_regenerate)
 
@@ -502,12 +562,12 @@ Examples:
 
     # default command
     default_parser = subparsers.add_parser("default", help="Get or set the default panel")
-    default_parser.add_argument("serial", nargs="?", help="Serial number to set as default")
+    default_parser.add_argument("serial", nargs="?", type=str.lower, help="Serial number to set as default")
     default_parser.set_defaults(func=cmd_default)
 
     # remove command
     remove_parser = subparsers.add_parser("remove", help="Remove a panel from the credential file")
-    remove_parser.add_argument("serial", help="Panel serial number to remove")
+    remove_parser.add_argument("serial", type=str.lower, help="Panel serial number to remove")
     remove_parser.set_defaults(func=cmd_remove)
 
     args = parser.parse_args()

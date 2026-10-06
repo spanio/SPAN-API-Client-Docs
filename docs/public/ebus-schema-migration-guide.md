@@ -567,6 +567,8 @@ The full property vocabulary:
 | `fed-by-device-status` | enum | Panel's view of communication-link health to the upstream device: `OK`, `LOST`, `DEGRADED`. |
 | `count` | integer | When the connected node aggregates multiple physical units (for example 4 microinverters reported as one PV device, or several battery packs reported as one BESS), how many. Not settable. Declared in the schema but not published by SPAN Panel in this release, so no value ever appears on the topic. |
 
+SPAN Panel publishes `feeds-device-status` and `fed-by-device-status` as `OK` or `LOST` only: a `DEGRADED` or `UNKNOWN` battery `status/communication-state` appears as `LOST`. The status can be absent at startup, or before the panel identifies the circuit or lugs that connect to the battery, while `shed/asserted-islanding-state` writes are still accepted.
+
 The publishing device's `$description.type` (`energy.ebus.device.circuit` versus `energy.ebus.device.lugs`) carries the connection-point class (feeder circuit versus feedthrough or main lugs), so no separate enum is needed on the connection record itself.
 
 Worked example: a circuit feeds an Enphase microinverter array commissioned as a single PV device with ID `<panel>-iq7plus-72-x-us`. The circuit publishes `connection/feeds-device-id = "<panel>-iq7plus-72-x-us"` and `connection/feeds-device-type = "energy.ebus.device.pv"`. The four aggregated microinverters are what `count` is intended to report, but SPAN Panel does not publish `count` in this release, so a consumer cannot distinguish an aggregated PV child from a single one by that property. A circuit feeding a single Tesla Powerwall publishes the same two properties.

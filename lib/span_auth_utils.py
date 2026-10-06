@@ -4,6 +4,7 @@ import json
 import os
 import stat
 import sys
+import tempfile
 from pathlib import Path
 from typing import Optional
 
@@ -29,15 +30,14 @@ def get_auth_file_path() -> Path:
 
 
 def check_file_permissions(path: Path) -> bool:
-    """Check if file has secure permissions (600). Returns True if secure."""
+    """Warn if group or others have any access (mode & 0o077). Returns True if secure."""
     if not path.exists():
         return True
 
-    mode = path.stat().st_mode
-    # Check if group or others have any permissions
-    if mode & (stat.S_IRWXG | stat.S_IRWXO):
+    mode = stat.S_IMODE(path.stat().st_mode)
+    if mode & 0o077:
         print(
-            f"Warning: {path} has insecure permissions. "
+            f"Warning: {path} has insecure permissions ({mode:o}). "
             f"Run 'chmod 600 {path}' to fix.",
             file=sys.stderr
         )
@@ -55,23 +55,42 @@ def load_auth_file() -> dict:
     check_file_permissions(path)
 
     with open(path, "r") as f:
-        return json.load(f)
+        data = json.load(f)
+
+    # Serial numbers are lowercase; normalize files written with mixed-case keys
+    data["panels"] = {k.lower(): v for k, v in (data.get("panels") or {}).items()}
+    if data.get("default_panel"):
+        data["default_panel"] = data["default_panel"].lower()
+    return data
 
 
 def save_auth_file(data: dict) -> None:
     """Save credentials to file with secure permissions."""
-    path = get_auth_file_path()
+    # Resolve a symlinked credential file so the link itself is preserved
+    path = Path(os.path.realpath(get_auth_file_path()))
 
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Create the file with 0600 atomically via a custom opener, so the
-    # access-token contents are never visible to other users on the system
-    # between file creation and a follow-up chmod.
-    def _open_0600(file_path, flags):
-        return os.open(file_path, flags, stat.S_IRUSR | stat.S_IWUSR)
+    data = dict(data)
+    data["panels"] = {k.lower(): v for k, v in (data.get("panels") or {}).items()}
+    if data.get("default_panel"):
+        data["default_panel"] = data["default_panel"].lower()
 
-    with open(path, "w", opener=_open_0600) as f:
-        json.dump(data, f, indent=2)
+    # mkstemp creates the file 0600, so the tokens are never readable by others,
+    # and os.replace leaves the new file's 0600 in place of any looser old mode.
+    fd, tmp_path = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, path)
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except FileNotFoundError:
+            pass
+        raise
 
 
 def get_panel_credentials(serial_number: Optional[str] = None) -> Optional[dict]:
@@ -91,7 +110,7 @@ def get_panel_credentials(serial_number: Optional[str] = None) -> Optional[dict]
 
     # Determine which panel to use
     if serial_number:
-        target = serial_number
+        target = serial_number.lower()
     elif data.get("default_panel"):
         target = data["default_panel"]
     elif len(data["panels"]) == 1:
@@ -119,6 +138,7 @@ def get_default_panel() -> Optional[str]:
 
 def set_default_panel(serial_number: str) -> bool:
     """Set the default panel. Returns True if successful."""
+    serial_number = serial_number.lower()
     data = load_auth_file()
 
     if serial_number not in data.get("panels", {}):
@@ -137,18 +157,35 @@ def add_panel_credentials(
     ebus_broker_password: str,
     access_token: str,
     access_token_issued_at: int,
-    set_as_default: bool = False
+    set_as_default: bool = False,
+    privilege: Optional[str] = None,
+    ebus_broker_username: Optional[str] = None,
+    ebus_broker_host: Optional[str] = None,
+    ebus_broker_mqtts_port: Optional[int] = None,
 ) -> None:
-    """Add or update credentials for a panel."""
+    """Add or update credentials for a panel.
+
+    privilege is "full" (registered with the hopPassphrase) or "reduced"
+    (registered by proof of proximity); None leaves it unrecorded.
+    """
+    serial_number = serial_number.lower()
     data = load_auth_file()
 
-    data["panels"][serial_number] = {
+    entry = {
         "hostname": hostname,
         "hop_passphrase": hop_passphrase,
         "ebus_broker_password": ebus_broker_password,
         "access_token": access_token,
         "access_token_issued_at": access_token_issued_at
     }
+    optional = {
+        "privilege": privilege,
+        "ebus_broker_username": ebus_broker_username,
+        "ebus_broker_host": ebus_broker_host,
+        "ebus_broker_mqtts_port": ebus_broker_mqtts_port,
+    }
+    entry.update({k: v for k, v in optional.items() if v is not None})
+    data["panels"][serial_number] = entry
 
     # Set as default if requested or if it's the only panel
     if set_as_default or len(data["panels"]) == 1:
@@ -159,6 +196,7 @@ def add_panel_credentials(
 
 def remove_panel_credentials(serial_number: str) -> bool:
     """Remove a panel from the credential file. Returns True if successful."""
+    serial_number = serial_number.lower()
     data = load_auth_file()
 
     if serial_number not in data.get("panels", {}):
@@ -190,15 +228,31 @@ def list_panels() -> list[dict]:
             "serial_number": serial,
             "hostname": creds.get("hostname"),
             "access_token_issued_at": creds.get("access_token_issued_at"),
+            "privilege": creds.get("privilege") or "unknown",
             "is_default": serial == default
         })
 
     return panels
 
 
+def reduced_privilege_hint(serial_number: str, has_passphrase: bool) -> str:
+    """Explain an HTTP 403 and how to obtain a full-privilege token."""
+    serial_number = serial_number.lower()
+    if has_passphrase:
+        remedy = (f"'span-auth refresh {serial_number}' (uses the stored hopPassphrase) "
+                  f"or 'span-auth setup --full {serial_number}'")
+    else:
+        remedy = f"'span-auth setup --full {serial_number}' or 'span-auth setup -p PASSPHRASE {serial_number}'"
+    return (
+        f"Hint: if the token for {serial_number} is reduced-privilege "
+        f"(registered by proof of proximity),\n"
+        f"registering with the hopPassphrase gives a full-privilege token: {remedy}"
+    )
+
+
 def get_ca_cert_path(serial_number: str) -> Path:
     """Get the path to a cached CA certificate for a panel."""
-    return get_ca_cert_dir() / f"{serial_number}.crt"
+    return get_ca_cert_dir() / f"{serial_number.lower()}.crt"
 
 
 def is_cert_expired(cert_path: Path) -> bool:
@@ -229,7 +283,15 @@ def ensure_ca_cert(serial_number: str, hostname: str) -> Path:
 
     Returns the path to the certificate file.
     """
-    import requests
+    try:
+        import requests
+    except ImportError as e:
+        requirements = Path(__file__).resolve().parent.parent / "scripts" / "requirements.txt"
+        sys.exit(
+            f"Error: missing Python package '{e.name}' for {sys.executable}\n"
+            f"Install with: {sys.executable} -m pip install -r {requirements}\n"
+            f"or run the scripts with a Python that has it: make -C scripts install PYTHON=/path/to/python3"
+        )
 
     cert_path = get_ca_cert_path(serial_number)
 
@@ -238,17 +300,30 @@ def ensure_ca_cert(serial_number: str, hostname: str) -> Path:
         if not is_cert_expired(cert_path):
             return cert_path
         print(f"CA certificate for {serial_number} is expired, re-downloading...", file=sys.stderr)
-        cert_path.unlink()
 
     # Create directory if needed
     get_ca_cert_dir().mkdir(parents=True, exist_ok=True)
 
-    # Download certificate
+    # Download to a temporary file and replace the cached cert only with a PEM certificate
     url = f"http://{hostname}/api/v2/certificate/ca"
-    response = requests.get(url)
-    response.raise_for_status()
+    response = requests.get(url, timeout=(5, 15))
+    if response.status_code != 200:
+        sys.exit(f"Error: could not download the CA certificate from {hostname}: HTTP {response.status_code}")
+    if "-----BEGIN CERTIFICATE-----" not in response.text:
+        sys.exit(f"Error: response from {hostname} is not a PEM certificate")
 
-    cert_path.write_text(response.text)
+    fd, tmp_path = tempfile.mkstemp(dir=cert_path.parent, prefix=f".{cert_path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(response.text)
+        os.chmod(tmp_path, 0o644)
+        os.replace(tmp_path, cert_path)
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except FileNotFoundError:
+            pass
+        raise
     print(f"Downloaded CA certificate to {cert_path}", file=sys.stderr)
 
     return cert_path

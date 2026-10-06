@@ -90,8 +90,7 @@ serial_number=$(resolve_panel_serial "$serial_number") || exit 1
 # Get panel credentials
 hostname=$(get_panel_hostname "$serial_number")
 if [[ -z "$hostname" ]]; then
-    echo "Error: Could not find hostname for panel '$serial_number'" >&2
-    exit 1
+    hostname="span-${serial_number}.local"
 fi
 
 access_token=$(get_panel_access_token "$serial_number")
@@ -111,5 +110,30 @@ if [[ "$add_auth" == true && -n "$access_token" ]]; then
     curl_args+=("-H" "Authorization: Bearer ${access_token}")
 fi
 
-# Execute curl
-exec curl "${curl_args[@]}" "$url"
+# Without auth, or when the caller dumps headers itself, curl runs unobserved
+if [[ "$add_auth" != true || -z "$access_token" ]]; then
+    exec curl "${curl_args[@]}" "$url"
+fi
+for arg in "${curl_args[@]}"; do
+    [[ "$arg" == --dump-header ]] && exec curl "${curl_args[@]}" "$url"
+    # -D in a short-option cluster such as -sD or -sD/tmp/h, where only curl's
+    # argument-free short options may precede it (so -XDELETE does not count)
+    if [[ "$arg" == -[!-]*D* || "$arg" == -D* ]]; then
+        prefix="${arg#-}"
+        prefix="${prefix%%D*}"
+        [[ -z "${prefix//[0123469:#aBfgGhiIjJklLMnNOpqRsSvVZ]/}" ]] && exec curl "${curl_args[@]}" "$url"
+    fi
+done
+
+# Capture the response headers to detect HTTP 403, leaving stdout and stderr untouched
+header_file=$(mktemp "${TMPDIR:-/tmp}/span-curl.XXXXXX")
+trap 'rm -f "$header_file"' EXIT
+status=0
+curl "${curl_args[@]}" -D "$header_file" "$url" || status=$?
+# With -L there is one status line per hop; the last one is the final response
+http_code=$(awk '/^HTTP\//{code=$2} END{print code}' "$header_file")
+if [[ "$http_code" == "403" ]]; then
+    echo >&2
+    print_reduced_privilege_hint "$serial_number"
+fi
+exit "$status"

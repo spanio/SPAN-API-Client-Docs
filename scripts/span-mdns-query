@@ -4,8 +4,17 @@
 import argparse
 import json
 import sys
-from zeroconf import Zeroconf, ServiceBrowser, ServiceListener
 import time
+from pathlib import Path
+
+try:
+    from zeroconf import Zeroconf, ServiceBrowser, ServiceListener
+except ImportError as e:
+    sys.exit(
+        f"Error: missing Python package '{e.name}' for {sys.executable}\n"
+        f"Install with: {sys.executable} -m pip install -r {Path(__file__).resolve().parent / 'requirements.txt'}\n"
+        f"or run the scripts with a Python that has it: make -C scripts install PYTHON=/path/to/python3"
+    )
 
 
 class SpanServiceListener(ServiceListener):
@@ -86,7 +95,7 @@ Examples:
   %(prog)s -t 5 ABC123 _span-panel._tcp
         """,
     )
-    parser.add_argument("serial_number", help="SPAN panel serial number")
+    parser.add_argument("serial_number", type=str.lower, help="SPAN panel serial number")
     parser.add_argument("service_type", help="Service type (e.g., _http, _mqtt._tcp)")
     parser.add_argument(
         "-t", "--timeout",

@@ -6,8 +6,16 @@ import json
 import sys
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 
-from zeroconf import ServiceBrowser, ServiceListener, Zeroconf
+try:
+    from zeroconf import ServiceBrowser, ServiceListener, Zeroconf
+except ImportError as e:
+    sys.exit(
+        f"Error: missing Python package '{e.name}' for {sys.executable}\n"
+        f"Install with: {sys.executable} -m pip install -r {Path(__file__).resolve().parent / 'requirements.txt'}\n"
+        f"or run the scripts with a Python that has it: make -C scripts install PYTHON=/path/to/python3"
+    )
 
 
 @dataclass
@@ -20,6 +28,14 @@ class PanelInfo:
     model: str | None = None
     firmware_version: str | None = None
     hardware_version: str | None = None
+
+
+def decode_txt(info) -> dict:
+    """Decode a service's TXT records into a str-to-str dict."""
+    return {
+        k.decode() if isinstance(k, bytes) else k: v.decode() if isinstance(v, bytes) else v
+        for k, v in (info.properties or {}).items()
+    }
 
 
 class SpanPanelListener(ServiceListener):
@@ -40,15 +56,10 @@ class SpanPanelListener(ServiceListener):
             if info:
                 # Get IP addresses
                 panel.addresses = [addr for addr in info.parsed_addresses()]
-                # Parse TXT records for device info
-                if info.properties:
-                    props = {
-                        k.decode() if isinstance(k, bytes) else k: v.decode() if isinstance(v, bytes) else v
-                        for k, v in info.properties.items()
-                    }
-                    panel.model = props.get("model")
-                    panel.firmware_version = props.get("firmware_version")
-                    panel.hardware_version = props.get("hardware_version")
+                props = decode_txt(info)
+                panel.model = props.get("model")
+                panel.firmware_version = props.get("firmware_version")
+                panel.hardware_version = props.get("hardware_version")
             self.panels[serial] = panel
 
     def remove_service(self, zc: Zeroconf, type_: str, name: str) -> None:
@@ -84,7 +95,28 @@ class SpanPanelListener(ServiceListener):
                 name = name[:-len(suffix)]
                 break
 
-        return name if name else None
+        return name.lower() if name else None
+
+
+class DeviceInfoListener(ServiceListener):
+    """Collects _device-info._tcp TXT records, keyed by their serial_number."""
+
+    def __init__(self):
+        self.records: dict[str, dict] = {}
+
+    def add_service(self, zc: Zeroconf, type_: str, name: str) -> None:
+        info = zc.get_service_info(type_, name)
+        if info:
+            props = decode_txt(info)
+            serial = props.get("serial_number")
+            if serial:
+                self.records[serial.lower()] = props
+
+    def remove_service(self, zc: Zeroconf, type_: str, name: str) -> None:
+        pass
+
+    def update_service(self, zc: Zeroconf, type_: str, name: str) -> None:
+        pass
 
 
 def discover_panels(timeout: float = 3.0) -> list[PanelInfo]:
@@ -99,15 +131,26 @@ def discover_panels(timeout: float = 3.0) -> list[PanelInfo]:
     """
     zeroconf = Zeroconf()
     listener = SpanPanelListener()
+    device_info = DeviceInfoListener()
 
-    # Browse for SPAN ebus services
-    browser = ServiceBrowser(zeroconf, "_ebus._tcp.local.", listener)
+    # Panels are found by their _ebus service; _device-info carries model and versions
+    browsers = [
+        ServiceBrowser(zeroconf, "_ebus._tcp.local.", listener),
+        ServiceBrowser(zeroconf, "_device-info._tcp.local.", device_info),
+    ]
 
     try:
         time.sleep(timeout)
     finally:
-        browser.cancel()
+        for browser in browsers:
+            browser.cancel()
         zeroconf.close()
+
+    for panel in listener.panels.values():
+        props = device_info.records.get(panel.serial_number, {})
+        panel.model = panel.model or props.get("model")
+        panel.firmware_version = panel.firmware_version or props.get("firmware_version")
+        panel.hardware_version = panel.hardware_version or props.get("hardware_version")
 
     return list(listener.panels.values())
 
@@ -159,6 +202,8 @@ def main():
                 print(f"  Model: {p.model}")
             if p.firmware_version:
                 print(f"  Firmware: {p.firmware_version}")
+            if p.hardware_version:
+                print(f"  Hardware: {p.hardware_version}")
             print()
 
 

@@ -4,9 +4,6 @@
 
 SPAN API is initially available for [SPAN Panel MAIN 32](https://www.span.io/products/main-32) as a public beta release.
 
-> [!IMPORTANT]
-> **Breaking change in `r202633`.** The MQTT/Homie data model changes from a single flat device to a parent/child device plus capabilities model. Existing integrations built against the earlier flat model (releases `r202603` through `r202627`) should follow the [SPAN Panel eBus Schema Migration Guide](docs/public/ebus-schema-migration-guide.md) to transition; the previous flat-model documentation is archived at [`specs/r202627/docs/`](specs/r202627/docs/).
-
 > **Notice:** SPAN API is an optional, advanced integration interface for elective use by SPAN Panel owners, residential power users and developers, subject to the restrictions set forth in this GitHub repository, and is not required for normal SPAN Panel operation.
 >
 > Support of SPAN API is provided on an "as time and resources permit" basis via this GitHub repository **only**.
@@ -194,8 +191,6 @@ SPAN API publishes:
 
 See the [MQTT Topic Reference](docs/public/mqtt-topic-reference.md) for the full topic structure, device-ID forms, and per-property details.
 
-> **Major breaking change in `r202633`.** SPAN API moved from a single-device (flat) model to this parent/child device + capabilities model. This is a breaking change to the MQTT/Homie surface. Integrations built against the earlier flat model (releases `r202603` through `r202627`) should follow the [SPAN Panel eBus Schema Migration Guide](docs/public/ebus-schema-migration-guide.md) to transition. The previous flat-model documentation is archived, frozen, at [`specs/r202627/docs/`](specs/r202627/docs/).
-
 > **Note on Serial Number Naming:** The serial number of SPAN Panel appears in different naming conventions depending on context: `serialNumber` (camelCase) in JSON/REST responses, `serial-number` (kebab-case) in Homie property names, and `serial_number` (snake_case) in mDNS TXT records. These all refer to the same value (e.g., `ab-1234-c5d67`). This document uses `<serial>` as shorthand in topic patterns.
 
 The Homie Convention requires a device to publish a schema specifying the device itself, its nodes, and each property of each node, as the value of the `$description` attribute, [this value is a well-defined JSON object](https://homieiot.github.io/specification/#device-attributes).
@@ -338,6 +333,8 @@ The (authenticated) request `PUT /api/v2/auth/passphrase` will remove the existi
 }
 ```
 
+The MQTT broker normally disconnects sessions that use the previous `ebusBrokerPassword`. Reconnect with the new one, retrying with backoff if it is not accepted at first.
+
 #### [Endpoints Enabling FQDN Inclusion in Server-Certificate SAN](#endpoints-enabling-fqdn-inclusion-in-server-certificate-san)
 
 As described in [Transport Security](#transport-security), the SPAN Panel TLS server-certificate includes the SPAN Panel mDNS `.local` hostname, and all SPAN Panel IP addresses in its list of SANs.
@@ -408,7 +405,7 @@ All endpoints below are relative to `/api/v2`
 
 | Method | Endpoint | Description | Auth |
 | --- | --- | --- | --- |
-| GET | `/status` | Get SPAN Panel serial number and firmware version | None |
+| GET | `/status` | Get SPAN Panel serial number, firmware version, and hardware version | None |
 | GET | `/certificate/ca` | Download CA-certificate | None |
 | POST | `/auth/register` | Register client and obtain access token | `hopPassphrase`* |
 | GET | `/auth/clients` | List registered clients | `accessToken`\*\* |
@@ -467,7 +464,7 @@ Homie/eBus topics below are full device topics under `ebus/5/`. `<serial>` is th
 | GET | `/api/v1/wifi/scan` | N/A | *(no MQTT equivalent)* |
 | POST | `/api/v1/wifi/connect` | N/A | *(no MQTT equivalent)* |
 
-**Note on `/api/v1/status`:** The v1 status endpoint returns a large object with many fields. The v2 status endpoint (`GET /api/v2/status`) is not a direct replacement: it returns only `serialNumber`, `firmwareVersion`, and `proximityProven`. For real-time SPAN Panel state, subscribe to MQTT topics.
+**Note on `/api/v1/status`:** The v1 status endpoint returns a large object with many fields. The v2 status endpoint (`GET /api/v2/status`) is not a direct replacement: it returns only `serialNumber`, `firmwareVersion`, `hardwareVersion`, and `proximityProven`. For real-time SPAN Panel state, subscribe to MQTT topics.
 
 `proximityProven` reports whether the proof-of-proximity window is currently open (the door switch having been pressed 3 times). Because `GET /api/v2/status` requires no authentication, this is the only way a client that is not yet registered can tell that it may register without supplying a `hopPassphrase`.
 
@@ -538,7 +535,7 @@ To recap:
 Therefore a SPAN API client must possess the `hopPassphrase` in order to authenticate; two methods of obtaining this credential are provided:
 
 1. Proof-of-proximity: When the SPAN Panel door switch is depressed three times in rapid succession, proximity is proven for approximately 15 minutes. During that interval a request to [auth/register](#authentication-endpoint) may omit the `hopPassphrase` from the request body, and the response received will contain the `hopPassphrase`, `ebusBrokerPassword`, and the `accessToken`. **The proof is single-use.** The first `auth/register` request that relies on it consumes it, whether or not that request succeeds, so a request that then fails for an unrelated reason (a client `name` that is already registered, for example) wastes the proof and requires pressing the door switch again. Choose a client `name` that is not already registered. Note that a token obtained this way is reduced-privilege (see the endpoint table above). `GET /api/v2/status` reports whether the window is currently open, via `proximityProven`, without consuming the proof. Note: opening the panel door counts as the first press (the door switch is a magnetic reed switch), so from a closed door only 2 additional presses are needed. The breaker-space LED strip flashes approximately twice to confirm proximity is proven.
-2. [SPAN Home mobile app](https://www.span.io/app) users can navigate to a page that provides the `hopPassphrase`of SPAN Panel.
+2. [SPAN Home mobile app](https://www.span.io/app) users can navigate to a page that provides the `hopPassphrase` of SPAN Panel.
 
 The [`span-auth`](https://github.com/spanio/SPAN-API-Client-Docs/blob/main/scripts/span-auth) script manages authentication credentials:
 
@@ -664,8 +661,6 @@ Found 1 SPAN panel(s):
   Serial: ab-1234-c5d67
   Hostname: span-ab-1234-c5d67.local
   Addresses: 192.0.2.100
-  Model: SPAN32
-  Firmware: spanos2/r202546/03
 ```
 
 For browsing mDNS service advertisements interactively, the Discovery app is available for [macOS](https://apps.apple.com/us/app/discovery-dns-sd-browser/id1381004916) and [Android](https://play.google.com/store/apps/details?id=com.mdns_discovery.app).
@@ -792,7 +787,7 @@ Port:       0
 Addresses:  192.0.2.1, 2001:db8::1, 2001:db8::2
 TXT Records:
   manufacturer = SPAN.io
-  model = SPAN32
+  model = MAIN_32
   hardware_version = 1.2
   serial_number = ab-1234-c5d67
   firmware_version = spanos2/r202546/03
